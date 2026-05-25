@@ -75,7 +75,7 @@
 #endif
 
 // / / / / / / / / / / / / / / / / / / / 
-// ALIGNAS                             /
+// ALIGNSTRING                         /
 // / / / / / / / / / / / / / / / / / / /
 #define ALIGNSTRING(S, A)  (struct { alignas(A) char s[sizeof S]; }){ S }.s // https://stackoverflow.com/a/34797534/25506417
 
@@ -129,9 +129,9 @@
 #define aligndown(x, type) (((uintptr_t)x) & ~(alignof(x) - 1))
 #define makeopaque(TYPE) typedef struct TYPE TYPE, *P##TYPE, **PP##TYPE
 #define arrsize(x) (sizeof(x) / sizeof((x)[0]))
+#define stringify(x) #x
 
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
+#define TOSTRING(x) stringify(x)
 #define LINE_STRING TOSTRING(__LINE__)
 #define EXPAND(x) x
 

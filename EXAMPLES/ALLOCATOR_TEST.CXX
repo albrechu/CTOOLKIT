@@ -9,6 +9,8 @@ int main()
 
 	PARENA arena = LoadArena(allocator, 1024);
 	df(FreeArena, arena);
+	ArenaClear(arena);
+	
 
 	allocator = ArenaAllocator(arena);
 	for (U64 i = 0; i < 64; i++)
@@ -22,7 +24,7 @@ int main()
 	{
 		*(I32 *)PoolPut(pool) = i;
 	}
-
+	
 	I32 *val;
 	POOLITER it;
 	PoolBeginRev(pool, &it);

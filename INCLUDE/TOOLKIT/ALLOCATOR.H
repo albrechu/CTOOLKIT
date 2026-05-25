@@ -149,62 +149,9 @@ VOID  PoolBeginRev(PPOOL P, PPOOLITER It);
 PVOID PoolNextRev(PPOOLITER It);
 VOID  PoolEndRev(PPOOLITER It);
 
-
 // / / / / / / / / / / / / / / / / / / / 
 // TLSF                                /
 // / / / / / / / / / / / / / / / / / / /
-/*
-#if defined(__alpha__) || defined(__ia64__) || defined(__x86_64__) || defined(_WIN64) || defined(__LP64__) || defined(__LLP64__)
-#define TLSF_64BIT
-#endif
-
-#ifdef TLSF_64BIT
-#define ALIGN_SHIFT 3  // 8-byte alignment
-#define MAX_FL_INDEX 32
-#else
-#define ALIGN_SHIFT 2  // 4-byte alignment
-#define MAX_FL_INDEX 30
-#endif
-
-#define SL_INDEX_SHIFT 5  // 32 second-level subdivisions
-#define SL_INDEX_COUNT (1 << SL_INDEX_SHIFT)
-#define FL_INDEX_SHIFT (SL_INDEX_SHIFT + ALIGN_SHIFT)
-#define FL_INDEX_COUNT (MAX_FL_INDEX - FL_INDEX_SHIFT + 1)
-
-// Status Bits
-#define BLOCK_FREE (1 << 0)
-#define BLOCK_PREV_FREE (1 << 1)
-#define BLOCK_FLAGS (BLOCK_FREE | BLOCK_PREV_FREE)
-
-makeopaque(TLSFHEAP);
-typedef struct TLSFBLOCK, *PTLSFBLOCK, **PPTLSFBLOCK;
-typedef struct TLSFBLOCK
-{
-    PTLSFBLOCK Previous;
-    U64        MemoryBlockSize;
-    PTLSFBLOCK NextFree, PreviousFree;
-} TLSFBLOCK, *PTLSFBLOCK;
-typedef struct TLSFHEAP
-{
-    TLSFBLOCK  Null;
-    U32        BitmapCount;
-    U32        Bitmap[FL_INDEX_COUNT];
-    PTLSFBLOCK Blocks[FL_INDEX_COUNT][SL_INDEX_COUNT];
-} TLSFHEAP;
-
-typedef struct TLSF
-{
-    ALLOCATOR Allocator; // Parent allocator
-    TLSFHEAP  Heap;
-} TLSF;
-
-PTLSF LoadTLSF(ALLOCATOR allocator);
-VOID  FreeTLSF(PTLSF tlsf);
-PVOID TLSFAlloc(PTLSF tlsf, U64 size, U64 alignment);
-PVOID TLSFRealloc(PTLSF tlsf, PVOID data, U64 size, U64 alignment);
-VOID  TLSFFree(PTLSF tlsf, PVOID data);
-
-*/
 
 #ifdef __cplusplus
 }
