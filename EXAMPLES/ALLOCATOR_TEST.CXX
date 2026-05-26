@@ -1,4 +1,6 @@
 #include <TOOLKIT/ALLOCATOR.H>
+#include <TOOLKIT/STRING.H>
+#include <TOOLKIT/CLI.H>
 #include <assert.h>
 
 int main()
@@ -39,6 +41,30 @@ int main()
 	{
 	}
 	PoolEnd(&it);
+
+	FSTR haystack = fstrstr("PlaneBUSAirportBusCarTrain");
+	
+	FSTR needle, str;
+	needle = fstrstr("Bus");
+	str = FStrFind(haystack, needle);
+	if (fstrvalid(str))
+		succln("Found %.*s at %d", (int)str.size, str.str, (int)(str.str - haystack.str));
+	else
+		errln("Did not find %.*s", (int)needle.size, needle.str);
+
+	needle = fstrstr("BuS");
+	str = FStrFind(haystack, needle);
+	if (fstrvalid(str))
+		succln("Found %.*s at %d", (int)str.size, str.str, (int)(str.str - haystack.str));
+	else
+		errln("Did not find %.*s", (int)needle.size, needle.str);
+	
+	needle = fstrstr("BuS");
+	str = FStrFindNoCase(haystack, needle);
+	if (fstrvalid(str))
+		succln("Found %.*s at %d", (int)str.size, str.str, (int)(str.str - haystack.str));
+	else
+		errln("Did not find %.*s", (int)needle.size, needle.str);
 
 	dfflush();
 	return 0;

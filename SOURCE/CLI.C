@@ -1,5 +1,6 @@
 #include <TOOLKIT/CLI.H>
 #include <TOOLKIT/FILESYSTEM.H>
+#include <TOOLKIT/STRING.H>
 
 #include <assert.h>
 #include <string.h>
@@ -343,7 +344,7 @@ BOOL LoadArgs(int argc, PPCHAR argv, U64 options_count, PARGOPTION options)
 // / / / / / / / / / / / / / / / / / / /
 RESULT Run(PALLOCATOR allocator, U32 args_count, PFSTR args)
 {
-    FSTR cmd = JoinFStrList(allocator, ' ', args_count, args);
+    FSTR cmd = FStrJoinList(allocator, ' ', args_count, args);
 	int result = system(cmd.str);
 	Free(allocator, (PVOID)cmd.str);
     switch (result)
@@ -364,7 +365,7 @@ PPROCESS LoadProcess(PALLOCATOR allocator, PROCESSMODE mode, U32 args_count, PFS
 {
     errdfs(16);
     // Join Arguments
-    FSTR cmd = JoinFStrList(allocator, ' ', args_count, args);
+    FSTR cmd = FStrJoinList(allocator, ' ', args_count, args);
     if (fstrinvalid(cmd)) return null;
     errdf(Free, allocator, (PVOID)cmd.str);
     // Allocate process

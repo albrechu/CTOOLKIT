@@ -95,6 +95,7 @@ typedef struct ALLOCATOR
 static const FSTR  FSTR_INVALID;
 #define fstr(string, length) LIT(FSTR, .str = (PCHAR)string, .size = length)
 #define fstrinvalid(s) ((s).str == null)
+#define fstrvalid(s) ((s).str != null)
 #define fstrstr(str) fstr(str, sizeof(str) - 1)
 
 static const FDATA FDATA_INVALID;

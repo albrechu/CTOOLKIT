@@ -17,17 +17,9 @@ PVOID Realloc(PALLOCATOR allocator, PVOID ptr, U64 size, U64 alignment);
 VOID  Free(PALLOCATOR allocator, PVOID ptr);
 
 // / / / / / / / / / / / / / / / / / / / 
-// STRING HELPERS                      /
-// / / / / / / / / / / / / / / / / / / /
-FSTR Strdup(PALLOCATOR allocator, FSTR string);
-VOID Strfree(PALLOCATOR allocator, FSTR string);
-FSTR JoinFStrList(PALLOCATOR allocator, CHAR separator, U32 strings_count, PFSTR strings);
-FSTR JoinFStr(PALLOCATOR allocator, U32 strings_count, PFSTR strings);
-
-// / / / / / / / / / / / / / / / / / / / 
 // ALLOCATOR                           /
 // / / / / / / / / / / / / / / / / / / /
-ALLOCATOR DefaultAllocator(void);
+ALLOCATOR DefaultAllocator(VOID);
 ALLOCATOR PoolAllocator(PPOOL pool);
 ALLOCATOR ArenaAllocator(PARENA arena);
 

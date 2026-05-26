@@ -53,56 +53,6 @@ VOID  Free(PALLOCATOR allocator, PVOID ptr)
 {
     allocator->free(allocator->user_data, ptr);
 }
-FSTR Strdup(PALLOCATOR allocator, FSTR string)
-{
-    FSTR r = string;
-	r.str = Alloc(allocator, sizeof(CHAR) * string.size, alignof(CHAR));
-    if (!r.str)
-        return FSTR_INVALID;
-    memcpy(r.str, string.str, string.size);
-    return r;
-}
-VOID Strfree(PALLOCATOR allocator, FSTR string)
-{
-    Free(allocator, (PVOID)string.str);
-}
-FSTR JoinFStrList(PALLOCATOR allocator, CHAR separator, U32 strings_count, PFSTR strings)
-{
-	U64 size = strings_count; // For separators and null terminator
-	for (U32 i = 0; i < strings_count; i++) // For string sizes
-		size += strings[i].size;
-
-	PCHAR buffer = (PCHAR)Alloc(allocator, size, alignof(CHAR));
-	U64 offset = 0;
-	U32 i;
-	for (i = 0; i < strings_count-1; i++)
-	{
-		memcpy(buffer + offset, strings[i].str, strings[i].size);
-		offset += strings[i].size;
-		buffer[offset] = separator;
-		offset += 1;
-	}
-	memcpy(buffer + offset, strings[i].str, strings[i].size);
-	offset += strings[i].size;
-	buffer[offset] = '\0';
-	return (FSTR) { .str = buffer, .size = size };
-}
-FSTR JoinFStr(PALLOCATOR allocator, U32 strings_count, PFSTR strings)
-{
-	U64 size = 1;
-	for (U32 i = 0; i < strings_count; i++) // For string sizes
-		size += strings[i].size;
-
-	PCHAR buffer = (PCHAR)Alloc(allocator, size, alignof(CHAR));
-	U64 offset = 0;
-	for (U32 i = 0; i < strings_count; i++)
-	{
-		memcpy(buffer + offset, strings[i].str, strings[i].size);
-		offset += strings[i].size;
-	}
-	buffer[offset] = '\0';
-	return (FSTR) { .str = buffer, .size = size };
-}
 
 // Default Allocator
 static U64 Aligned(U64 size, U64 align)

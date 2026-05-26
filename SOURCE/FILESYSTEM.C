@@ -1,5 +1,6 @@
 #include <TOOLKIT/FILESYSTEM.H>
 #include <TOOLKIT/COMPRESSION.H>
+#include <TOOLKIT/STRING.H>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -79,7 +80,7 @@ static DIRECTORYQUERY FilesystemScanDirectory(PFILESYSTEM fs)
             query.entries = (PDET)Realloc(&fs->allocator, query.entries, sizeof(DET) * (query.entries_count + 1), alignof(DET));
             
             PDET e    = &query.entries[query.entries_count++];
-            e->name   = Strdup(&fs->allocator, fstr(name, strlen(name)));
+            e->name   = FstrStrdup(&fs->allocator, fstr(name, strlen(name)));
             e->is_dir = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? true : false;
         }
     } while (FindNextFileA(hFind, &find_data));
