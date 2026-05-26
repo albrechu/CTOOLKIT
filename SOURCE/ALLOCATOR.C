@@ -178,7 +178,7 @@ ALLOCATOR ArenaAllocator(PARENA arena)
 PARENA LoadArena(ALLOCATOR allocator, U64 block_size)
 {
     PARENA arena;
-    if (not (arena = Alloc(&allocator, sizeof(ARENA), alignof(ARENA)))) return null;
+    if (not (arena = Calloc(&allocator, sizeof(ARENA), alignof(ARENA)))) return null;
     arena->Allocator = allocator;
     arena->DefaultBlockSize = block_size ? block_size : (64 * 1024);
     return arena;
@@ -445,7 +445,7 @@ static PTHREADCACHE ThreadCacheGet(PPOOL P)
 	PTHREADCACHE TC = (PTHREADCACHE)POOL_TLS_GET(P->ThreadKey);
 	if (!TC)
 	{
-		TC = Alloc(&P->Allocator, sizeof(THREADCACHE), alignof(THREADCACHE));
+		TC = Calloc(&P->Allocator, sizeof(THREADCACHE), alignof(THREADCACHE));
 		if (!TC)
 			return null;
 		TC->Owner = P;
@@ -539,7 +539,7 @@ PPOOL LoadPool(ALLOCATOR allocator, U64 ObjSize, U64 BlockCap)
 		if (BlockCap == 0) BlockCap = 1;
 	}
 
-	PPOOL P = Alloc(&allocator, sizeof(POOL), alignof(POOL));
+	PPOOL P = Calloc(&allocator, sizeof(POOL), alignof(POOL));
 	if (!P)
 		return null;
 	P->Allocator = allocator;
