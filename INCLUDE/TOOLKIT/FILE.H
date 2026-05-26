@@ -125,6 +125,7 @@ RESULT BeginFile(ALLOCATOR allocator, FSTR path, FILEMODE mode, U64 initial_capa
 RESULT FileOpen(FSTR path, FILEMODE mode, PFILEDATA file);
 RESULT FileReopen(PFILEDATA file, FILEMODE mode);
 RESULT FileWriteAll(PFILEDATA file, BOOL as_text, FSTR content);
+RESULT FileRead(PFILEDATA file, U64 count, PFSTR content);
 RESULT FileReadAll(PFILEDATA file, BOOL as_text, PFSTR content);
 RESULT FileEnsureCapacity(PFILEDATA file, U64 capacity);
 RESULT FileReadLine(PFILEDATA file, CHAR terminator, CHAR terminator_replacement, BOOL as_text, PFSTR content);

@@ -153,6 +153,28 @@ RESULT FileWriteAll(PFILEDATA file, BOOL as_text, FSTR content)
 	file->FileSize = content.size; // Update known file size
 	return OK;
 }
+RESULT FileRead(PFILEDATA file, U64 count, PFSTR content)
+{
+	assert(file->File != null and "File must be open to read from.");
+	RESULT rc;
+	if ((rc = FileEnsureCapacity(file, count)))
+		return rc;
+
+	U64 read_count = fread(file->Buffer.str, sizeof(CHAR), count, (FILE *)file->File);
+	if (read_count < count) // Less bytes read than wanted;
+	{
+		if (!feof((FILE *)file->File)) 
+		{
+			fseek((FILE *)file->File, file->Offset, SEEK_SET);
+			return UNDEFINED_ERROR;
+		}
+		return END_OF_FILE;
+	}
+	file->Buffer.size = read_count;
+	file->Offset += read_count;
+	*content = file->Buffer;
+	return OK;
+}
 RESULT FileReadAll(PFILEDATA file, BOOL as_text, PFSTR content)
 {
 	assert(file->File != null and "File must be open to read from.");
@@ -173,9 +195,7 @@ RESULT FileReadAll(PFILEDATA file, BOOL as_text, PFSTR content)
 	rewind((FILE *)file->File);
 
 	U64 read_count = fread(file->Buffer.str, sizeof(CHAR), file->FileSize, (FILE *)file->File);
-
-	// In text mode, fread might return fewer bytes than FileSize due to \r\n -> \n translation
-	if (read_count < file->FileSize && !feof((FILE *)file->File))
+	if (read_count < file->FileSize and !feof((FILE *)file->File)) // Account for mode = "r" 
 	{
 		if (ferror((FILE *)file->File))
 			return ErrnoAsResult(ferror((FILE *)file->File));
