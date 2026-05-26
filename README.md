@@ -114,6 +114,7 @@ dfflush(); // Free evrything
 ```
 ## CLI
 ```c
+/// Parsing
 // Set default values for arguments
 I32  a = 0;
 F32  b = 0;
@@ -143,11 +144,39 @@ ARGOPTION options[] =
 if (!LoadArgs(argc, argv, arrsize(options), options))
 	return -1
 
-// Progressbar
+/// Progressbar
 for (U64 i = 0; i < (U64)1e9; i++)
 {
-	if (i % (U64)1e7 == 0) // Update progress every 10 million iterations
-		Progress(LOGGING_SPECIAL, (I32)(i / 1e7), "Processing...");
+	if (i %  9999999ULL == 0)
+		Progress(LOGGING_SPECIAL, rounddiv(i,  9999999ULL), "Processing...");
+}
+
+/// PROCESS WITH PIPES
+ALLOCATOR allocator = DefaultAllocator();
+FSTR args[] = 
+{ 
+	fstrstr("powershell.exe"),
+	fstrstr("-NoProfile"),
+	fstrstr("-ExecutionPolicy"),
+	fstrstr("Bypass"),
+	fstrstr("-Command"),
+	fstrstr("Get-Date")
+};
+PPROCESS process = LoadProcess(&allocator, PROCESSMODE_READ, arrsize(args), args);
+if (process)
+{
+	CHAR buf[4096];
+	U64 read;
+	while (ProcessRead(process, buf, sizeof(buf), &read) == OK) // Read output
+		info("%.*s", (int)read, buf);
+	
+	I32 exit_code;
+	ProcessWait(process, &exit_code); // FreeProcess does this automatically if you do not need the exit code
+	if (exit_code == 0)
+		succln("Process exited with code: %d\n", exit_code);
+	else
+		errln("Process exited with code: %d\n", exit_code);
+	FreeProcess(process);
 }
 ```
 

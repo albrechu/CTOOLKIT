@@ -413,7 +413,7 @@ PJOBPOOL LoadJobPool(ALLOCATOR allocator, U32 threads_count, U32 job_capacity)
     errdf(FreePool, job_pool->JobPool);
     // Load threads which run the jobs
     job_pool->ThreadsCount = threads_count;
-    job_pool->Threads      = NewArr(allocator, PTHREAD, threads_count);
+    job_pool->Threads = (PPTHREAD)Alloc(&allocator, sizeof(PTHREAD) * threads_count, alignof(PTHREAD));
     U64 i;
     for (i = 0; i < threads_count; i++)
     {

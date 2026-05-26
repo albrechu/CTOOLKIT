@@ -73,6 +73,8 @@ typedef enum RESULT
 	BUSY                 = -1,
 	OK                   = 0,
 	END_OF_FILE          = 1,
+	IO_PENDING           = 2,
+	UNDEFINED_NONERROR   = 3,
 } RESULT;
 
 makeopaque(POOL);
@@ -93,7 +95,7 @@ typedef struct ALLOCATOR
 static const FSTR  FSTR_INVALID;
 #define fstr(string, length) LIT(FSTR, .str = (PCHAR)string, .size = length)
 #define fstrinvalid(s) ((s).str == null)
-#define fstrfromstr(str) fstr(str, sizeof(str) - 1)
+#define fstrstr(str) fstr(str, sizeof(str) - 1)
 
 static const FDATA FDATA_INVALID;
 #define fdata(d, s) LIT(FDATA, .data = d, .size = s)

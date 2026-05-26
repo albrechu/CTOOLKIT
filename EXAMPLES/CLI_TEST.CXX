@@ -1,4 +1,5 @@
 #include <TOOLKIT/CLI.H>
+#include <TOOLKIT/ALLOCATOR.H>
 
 int main()
 {
@@ -44,7 +45,34 @@ int main()
 
 	for (U64 i = 0; i < (U64)1e9; i++)
 	{
-		if (i % (U64)1e7 == 0)
-			Progress(LOGGING_SPECIAL, (I32)(i / 1e7), "Processing...");
+		if (i %  9999999ULL == 0)
+			Progress(LOGGING_SPECIAL, rounddiv(i,  9999999ULL), "Processing...");
+	}
+	
+	ALLOCATOR allocator = DefaultAllocator();
+	FSTR args[] = 
+	{ 
+		fstrstr("powershell.exe"),
+		fstrstr("-NoProfile"),
+		fstrstr("-ExecutionPolicy"),
+		fstrstr("Bypass"),
+		fstrstr("-Command"),
+		fstrstr("Get-Date")
+	};
+	PPROCESS process = LoadProcess(&allocator, PROCESSMODE_READ, arrsize(args), args);
+	if (process)
+	{
+		CHAR buf[4096];
+		U64 read;
+		while (ProcessRead(process, buf, sizeof(buf), &read) == OK)
+			info("%.*s", (int)read, buf);
+		
+		I32 exit_code;
+		ProcessWait(process, &exit_code);
+		if (exit_code == 0)
+			succln("Process exited with code: %d\n", exit_code);
+		else
+			errln("Process exited with code: %d\n", exit_code);
+		FreeProcess(process);
 	}
 }

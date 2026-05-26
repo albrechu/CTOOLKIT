@@ -130,6 +130,7 @@
 #define makeopaque(TYPE) typedef struct TYPE TYPE, *P##TYPE, **PP##TYPE
 #define arrsize(x) (sizeof(x) / sizeof((x)[0]))
 #define stringify(x) #x
+#define rounddiv(x, divisor) (((x) + ((divisor) >> 1)) / (divisor))
 
 #define TOSTRING(x) stringify(x)
 #define LINE_STRING TOSTRING(__LINE__)

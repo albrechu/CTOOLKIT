@@ -1,10 +1,21 @@
 #include <TOOLKIT/CLI.H>
 #include <TOOLKIT/FILESYSTEM.H>
 
+#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#elif __unix__ || defined(__APPLE__)
+#include <unistd.h>    // fork, pipe, close, dup2, execvp, read, write
+#include <sys/types.h> // pid_t
+#include <sys/wait.h>  // waitpid, WIFEXITED, WEXITSTATUS, WNOHANG
+#include <signal.h>    // kill, SIGKILL
+#endif
+
 
 // / / / / / / / / / / / / / / / / / / / 
 // PRINT                               /
@@ -87,7 +98,7 @@ void ProgressF(CSTR blocks[9], I32 block_size, LOGGING type, I32 progress, CSTR 
     FILE *stream = log_stream ? log_stream : stdout;
     fputc('\r', stream);
     Log((LOGGING)color, "|%s| %3d%% %s", bar, progress, text);
-    if (progress >= 100)
+    if (progress > 99)
         fputs("\n", stdout);
 
     fflush(stdout);
@@ -170,7 +181,7 @@ static BOOL ParseValue(ARGTYPE type, PCHAR string, PVOID value)
         }
 
         unsigned long v = strtoul(string, &end, 10);
-        if (end == string || *end != '\0' || errno == ERANGE)
+        if (end == string or *end != '\0' or errno == ERANGE)
             return false;
 
         *(U32 *)value = (U32)v;
@@ -185,7 +196,7 @@ static BOOL ParseValue(ARGTYPE type, PCHAR string, PVOID value)
         }
 
         F32 v = strtof(string, &end);
-        if (end == string || *end != '\0' || errno == ERANGE)
+        if (end == string or *end != '\0' or errno == ERANGE)
             return false;
 
         *(F32 *)value = v;
@@ -199,7 +210,7 @@ static BOOL ParseValue(ARGTYPE type, PCHAR string, PVOID value)
             return true;
         }
         F64 v = strtod(string, &end);
-        if (end == string || *end != '\0' || errno == ERANGE)
+        if (end == string or *end != '\0' or errno == ERANGE)
             return false;
         *(F64 *)value = v;
         return true;
@@ -326,3 +337,322 @@ BOOL LoadArgs(int argc, PPCHAR argv, U64 options_count, PARGOPTION options)
     }
     return success;
 }
+
+// / / / / / / / / / / / / / / / / / / / 
+// COMMANDS                            /
+// / / / / / / / / / / / / / / / / / / /
+RESULT Run(PALLOCATOR allocator, U32 args_count, PFSTR args)
+{
+    FSTR cmd = JoinFStrList(allocator, ' ', args_count, args);
+	int result = system(cmd.str);
+	Free(allocator, (PVOID)cmd.str);
+    switch (result)
+    {
+	case 0:
+		return OK;
+    case -1:
+        return UNDEFINED_ERROR;
+	default:
+        return UNDEFINED_ERROR;
+    }
+}
+
+// / / / / / / / / / / / / / / / / / / / 
+// PROCESS                             /
+// / / / / / / / / / / / / / / / / / / /
+PPROCESS LoadProcess(PALLOCATOR allocator, PROCESSMODE mode, U32 args_count, PFSTR args)
+{
+    errdfs(16);
+    // Join Arguments
+    FSTR cmd = JoinFStrList(allocator, ' ', args_count, args);
+    if (fstrinvalid(cmd)) return null;
+    errdf(Free, allocator, (PVOID)cmd.str);
+    // Allocate process
+    PPROCESS process = (PPROCESS)Calloc(allocator, sizeof(PROCESS), alignof(PROCESS));
+    if (not process)
+        return errdfflush(), null;
+    errdf(Free, allocator, process);
+    process->Allocator = *allocator;
+    process->Mode = mode;
+    process->ExitCode = -1;
+
+#ifdef _WIN32
+    SECURITY_ATTRIBUTES sa = { 0 };
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.bInheritHandle = true;
+
+    PROCESS_INFORMATION pi = { 0 };
+    STARTUPINFOA si = { 0 };
+    si.cb = sizeof(STARTUPINFOA);
+
+    PPIPE write_out = null; // Pipe that child process writes to internally.
+    PPIPE read_in = null;   // Pipe that child process reads from internally.
+    // Reading pipes
+    if (mode == PROCESSMODE_READ or mode == PROCESSMODE_READWRITE)
+    {
+        if (!CreatePipe(&process->ReadOut, &write_out, &sa, 0))
+            return errdfflush(), null;
+        errdf(CloseHandle, write_out);
+        errdf(CloseHandle, process->ReadOut);
+        if (not SetHandleInformation(process->ReadOut, HANDLE_FLAG_INHERIT, 0)) // Read end non-inheritable
+            return errdfflush(), null;
+        
+        si.hStdError = write_out;
+        si.hStdOutput = write_out;
+        si.dwFlags |= STARTF_USESTDHANDLES;
+    }
+    // Writing pipes
+    if (mode == PROCESSMODE_WRITE or mode == PROCESSMODE_READWRITE)
+    {
+        if (!CreatePipe(&read_in, &process->WriteIn, &sa, 0))
+            return errdfflush(), null;
+        errdf(CloseHandle, process->WriteIn);
+        errdf(CloseHandle, read_in);
+        if (not SetHandleInformation(process->WriteIn, HANDLE_FLAG_INHERIT, 0)) // Write end non-inheritable
+            return errdfflush(), null;
+
+        si.hStdInput = read_in;
+        si.dwFlags |= STARTF_USESTDHANDLES;
+    }
+
+    if (not CreateProcessA(null, cmd.str, null, null, true, 0, null, null, &si, &pi))
+    {
+        DWORD error = GetLastError();
+        CHAR error_msg[256];
+        FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, null, error, 0, error_msg, sizeof(error_msg), null);
+        debugln("CreateProcessA failed with error '%s' (%lu)", error_msg, error);
+        return errdfflush(), null;
+    }
+
+    process->ProcessHandle = pi.hProcess;
+    process->ThreadHandle  = pi.hThread;
+    process->ProcessId     = pi.dwProcessId;
+    process->ThreadId      = pi.dwThreadId;
+
+    if (write_out) CloseHandle(write_out); // It should be internal to the child, so don't write to it.
+    if (read_in)   CloseHandle(read_in);   // Same here.
+
+#elif defined(__unix__) || defined(__APPLE__)
+    int stdout_pipe[2] = { -1, -1 };
+    int stdin_pipe[2] = { -1, -1 };
+
+    if (mode == PROCESSMODE_READ or mode == PROCESSMODE_READWRITE)
+    {
+        if (pipe(stdout_pipe) == -1)
+            return errdfflush(), null;
+    }
+
+    if (mode == PROCESSMODE_WRITE or mode == PROCESSMODE_READWRITE)
+    {
+        if (pipe(stdin_pipe) == -1)
+        {
+            if (stdout_pipe[0] != -1) close(stdout_pipe[0]);
+            if (stdout_pipe[1] != -1) close(stdout_pipe[1]);
+            return errdfflush(), null;
+        }
+    }
+
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        if (stdout_pipe[0] != -1) close(stdout_pipe[0]);
+        if (stdout_pipe[1] != -1) close(stdout_pipe[1]);
+        if (stdin_pipe[0] != -1) close(stdin_pipe[0]);
+        if (stdin_pipe[1] != -1) close(stdin_pipe[1]);
+        return errdfflush(), null;
+    }
+
+    if (pid == 0) // Child process
+    {
+        // Redirect read
+        if (mode == PROCESSMODE_READ or mode == PROCESSMODE_READWRITE)
+        {
+            close(stdout_pipe[0]); // Close read end
+            dup2(stdout_pipe[1], STDOUT_FILENO);
+            dup2(stdout_pipe[1], STDERR_FILENO);
+            close(stdout_pipe[1]);
+        }
+        // Redirect write
+        if (mode == PROCESSMODE_WRITE or mode == PROCESSMODE_READWRITE)
+        {
+            close(stdin_pipe[1]); // Close write end
+            dup2(stdin_pipe[0], STDIN_FILENO);
+            close(stdin_pipe[0]);
+        }
+
+        // Build argv array
+        PPCHAR argv = (PPCHAR)Alloc(sizeof(PCHAR) * (args_count + 1), alignof(PCHAR));
+        if (not argv)
+            exit(1); // OOM, exit child.
+        for (U32 i = 0; i < args_count; i++)
+        {
+            argv[i] = (char *)args[i].str;
+        }
+        argv[args_count] = null;
+
+        execvp(argv[0], argv);
+        Free(allocator, argv);
+        exit(1); // execvp failed, exit child.
+    }
+
+    // Parent process
+    process->ProcessId = pid;
+    if (mode == PROCESSMODE_READ or mode == PROCESSMODE_READWRITE)
+    {
+        close(stdout_pipe[1]); // It should be internal to the child, so don't write to it.
+        process->ReadOut = (PPIPE)(intptr_t)stdout_pipe[0];
+    }
+    if (mode == PROCESSMODE_WRITE or mode == PROCESSMODE_READWRITE)
+    {
+        close(stdin_pipe[0]); // Same here
+        process->WriteIn = (PPIPE)(intptr_t)stdin_pipe[1];
+    }
+#endif
+    Free(allocator, (PVOID)cmd.str);
+    return process;
+}
+RESULT ProcessRead(PPROCESS process, PVOID buffer, U64 size, U64 *bytes_read)
+{
+    if (!process or !buffer or !bytes_read) return INVALID_PARAMETER;
+    if (process->Mode != PROCESSMODE_READ && process->Mode != PROCESSMODE_READWRITE)
+        return INVALID_OPERATION;
+
+#ifdef _WIN32
+    DWORD read;
+    if (not ReadFile(process->ReadOut, buffer, (DWORD)size, &read, null))
+    {
+        *bytes_read = read;
+        DWORD ec = GetLastError();
+        switch (ec)
+        {
+        case ERROR_BROKEN_PIPE: return END_OF_FILE;
+        case ERROR_IO_PENDING: return IO_PENDING;
+        default: return ec < 0 ? UNDEFINED_ERROR : UNDEFINED_NONERROR;
+        }
+    }
+    *bytes_read = read;
+#else
+    ssize_t result = read((int)(intptr_t)process->ReadOut, buffer, size);
+    if (result == -1) return UNDEFINED_ERROR;
+    if (result == 0) return END_OF_FILE;
+    *bytes_read = result;
+#endif
+    return OK;
+}
+RESULT ProcessWrite(PPROCESS process, PVOID buffer, U64 size, U64 *bytes_written)
+{
+    if (!process or !buffer or !bytes_written) return INVALID_PARAMETER;
+    if (process->Mode != PROCESSMODE_WRITE && process->Mode != PROCESSMODE_READWRITE)
+        return INVALID_OPERATION;
+
+#ifdef _WIN32
+    DWORD written;
+    if (!WriteFile(process->WriteIn, buffer, (DWORD)size, &written, null))
+    {
+        *bytes_written = written;
+        DWORD ec = GetLastError();
+        return ec < 0 ? UNDEFINED_ERROR : UNDEFINED_NONERROR;
+    }
+    *bytes_written = written;
+#else
+    ssize_t result = write((int)(intptr_t)process->WriteIn, buffer, size);
+    if (result == -1) return UNDEFINED_ERROR;
+    *bytes_written = result;
+#endif
+    return OK;
+}
+PROCESSSTATUS ProcessGetStatus(PPROCESS process)
+{
+    if (not process) return PROCESSSTATUS_FAILED;
+
+#ifdef _WIN32
+    DWORD exit_code;
+    if (not GetExitCodeProcess(process->ProcessHandle, &exit_code))
+        return PROCESSSTATUS_FAILED;
+
+    if (exit_code == STILL_ACTIVE)
+        return PROCESSSTATUS_RUNNING;
+
+    process->ExitCode = (I32)exit_code;
+    return PROCESSSTATUS_EXITED;
+#else
+    int status;
+    pid_t result = waitpid(process->ProcessId, &status, WNOHANG);
+
+    if (result == 0)
+        return PROCESSSTATUS_RUNNING;
+
+    if (result == -1)
+        return PROCESSSTATUS_FAILED;
+
+    if (WIFEXITED(status))
+    {
+        process->ExitCode = WEXITSTATUS(status);
+        return PROCESSSTATUS_EXITED;
+    }
+
+    return PROCESSSTATUS_FAILED;
+#endif
+}
+RESULT ProcessWait(PPROCESS process, I32 *exit_code)
+{
+    if (!process) return INVALID_PARAMETER;
+
+#ifdef _WIN32
+    if (WaitForSingleObject(process->ProcessHandle, INFINITE) != WAIT_OBJECT_0)
+        return UNDEFINED_ERROR;
+
+    DWORD code;
+    if (!GetExitCodeProcess(process->ProcessHandle, &code))
+        return UNDEFINED_ERROR;
+    process->ExitCode = (I32)code;
+    if (exit_code) *exit_code = process->ExitCode;
+#else
+    int status;
+    if (waitpid(process->ProcessId, &status, 0) == -1)
+        return UNDEFINED_ERROR;
+
+    if (WIFEXITED(status))
+    {
+        process->ExitCode = WEXITSTATUS(status);
+        if (exit_code) *exit_code = process->ExitCode;
+    }
+    else
+    {
+        return UNDEFINED_ERROR;
+    }
+#endif
+    return OK;
+}
+RESULT ProcessKill(PPROCESS process)
+{
+    if (!process) return INVALID_PARAMETER;
+
+#ifdef _WIN32
+    if (!TerminateProcess(process->ProcessHandle, 1))
+        return UNDEFINED_ERROR;
+#else
+    if (kill(process->ProcessId, SIGKILL) == -1)
+        return UNDEFINED_ERROR;
+#endif
+    return OK;
+}
+VOID FreeProcess(PPROCESS process)
+{
+    if (!process) return;
+    PROCESSSTATUS status = ProcessGetStatus(process);
+    if (status == PROCESSSTATUS_RUNNING)
+        ProcessWait(process, null);
+#ifdef _WIN32
+    if (process->ReadOut) CloseHandle(process->ReadOut);
+    if (process->WriteIn) CloseHandle(process->WriteIn);
+    if (process->ProcessHandle) CloseHandle(process->ProcessHandle);
+    if (process->ThreadHandle) CloseHandle(process->ThreadHandle);
+#else
+    if (process->ReadOut) close((int)(intptr_t)process->ReadOut);
+    if (process->WriteIn) close((int)(intptr_t)process->WriteIn);
+#endif
+    Free(&process->Allocator, process);
+}
+
+

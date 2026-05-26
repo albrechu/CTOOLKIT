@@ -9,24 +9,24 @@ extern "C" {
 makeopaque(TLSF);
 
 // / / / / / / / / / / / / / / / / / / / 
-// ALLOCATOR                           /
+// DEFAULT ALLOCATOR                   /
 // / / / / / / / / / / / / / / / / / / /
 PVOID Alloc(PALLOCATOR allocator, U64 size, U64 alignment);
 PVOID Calloc(PALLOCATOR allocator, U64 size, U64 alignment);
-#define New(allocator, type) \
-    ((typeof(type) *)Alloc(&(allocator), sizeof(type), alignof(type)))
-#define NewArr(allocator, type, n) \
-    ((typeof(type) *)Alloc(&(allocator), sizeof(type) * (n), alignof(type)))
-#define CNew(allocator, type) \
-    ((typeof(type) *)Calloc(&(allocator), sizeof(type), alignof(type)))
-#define CNewArr(allocator, type, n) \
-    ((typeof(type) *)Calloc(&(allocator), sizeof(type) * (n), alignof(type)))
-
 PVOID Realloc(PALLOCATOR allocator, PVOID ptr, U64 size, U64 alignment);
 VOID  Free(PALLOCATOR allocator, PVOID ptr);
-FSTR  Strdup(PALLOCATOR allocator, FSTR string);
-VOID  Strfree(PALLOCATOR allocator, FSTR string);
 
+// / / / / / / / / / / / / / / / / / / / 
+// STRING HELPERS                      /
+// / / / / / / / / / / / / / / / / / / /
+FSTR Strdup(PALLOCATOR allocator, FSTR string);
+VOID Strfree(PALLOCATOR allocator, FSTR string);
+FSTR JoinFStrList(PALLOCATOR allocator, CHAR separator, U32 strings_count, PFSTR strings);
+FSTR JoinFStr(PALLOCATOR allocator, U32 strings_count, PFSTR strings);
+
+// / / / / / / / / / / / / / / / / / / / 
+// ALLOCATOR                           /
+// / / / / / / / / / / / / / / / / / / /
 ALLOCATOR DefaultAllocator(void);
 ALLOCATOR PoolAllocator(PPOOL pool);
 ALLOCATOR ArenaAllocator(PARENA arena);

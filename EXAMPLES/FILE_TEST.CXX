@@ -8,7 +8,7 @@ int main()
 	PathSetWorkingDirToExecutable();
 
 	PATH cache_path;
-	FSTR cache_file = PathAbs(fstrfromstr("../CMakeCache.txt"), cache_path);
+	FSTR cache_file = PathAbs(fstrstr("../CMakeCache.txt"), cache_path);
 
 	FILEDATA f;
 	// Read the entire content of the CMakeCache.txt file
@@ -30,22 +30,22 @@ int main()
 		errln("Failed to open file.");
 	}
 	// Write an INI file with various types of values
-	if (FileOpen(fstrfromstr("test.ini"), FILEMODE_WRITETEXT, &f) == OK)
+	if (FileOpen(fstrstr("test.ini"), FILEMODE_WRITETEXT, &f) == OK)
 	{
-		IniGroup(&f, fstrfromstr("Settings"));
-		IniFloat(&f, fstrfromstr("Volume"), 0.75f);
-		IniInteger(&f, fstrfromstr("ResolutionWidth"), 1920);
-		IniBool(&f, fstrfromstr("Fullscreen"), true);
+		IniGroup(&f, fstrstr("Settings"));
+		IniFloat(&f, fstrstr("Volume"), 0.75f);
+		IniInteger(&f, fstrstr("ResolutionWidth"), 1920);
+		IniBool(&f, fstrstr("Fullscreen"), true);
 
-		IniGroup(&f, fstrfromstr("User"));
-		IniString(&f, fstrfromstr("Username"), fstrfromstr("JohnDoe"));
-		IniInteger(&f, fstrfromstr("Age"), 42);
+		IniGroup(&f, fstrstr("User"));
+		IniString(&f, fstrstr("Username"), fstrstr("JohnDoe"));
+		IniInteger(&f, fstrstr("Age"), 42);
 
 		FileClose(&f);
 	}
 	// Read back the INI file to verify it was written correctly
 	INIENTRY entry;
-	FileOpen(fstrfromstr("test.ini"), FILEMODE_READTEXT, &f);
+	FileOpen(fstrstr("test.ini"), FILEMODE_READTEXT, &f);
 	while (IniReadNextEntry(&f, &entry) == OK)
 	{
 		switch (entry.ValueType)
@@ -70,7 +70,7 @@ int main()
 	FileClose(&f);
 
 	// Read back the JSON file to verify it was written correctly
-	if (FileOpen(fstrfromstr("test2.json"), FILEMODE_READTEXT, &f) == OK)
+	if (FileOpen(fstrstr("test2.json"), FILEMODE_READTEXT, &f) == OK)
 	{
 		JSONENTRY json_entry;
 		while (JsonReadNextEntry(&f, &json_entry) == OK)
@@ -108,32 +108,32 @@ int main()
 	}
 
 	// Write a JSON file 
-	if (FileOpen(fstrfromstr("test2.json"), FILEMODE_WRITETEXT, &f) == OK)
+	if (FileOpen(fstrstr("test2.json"), FILEMODE_WRITETEXT, &f) == OK)
 	{
 		JsonBegin(&f);
 		{
-			JsonObjectBegin(&f, fstrfromstr("player"));
+			JsonObjectBegin(&f, fstrstr("player"));
 			{
-				JsonString(&f, fstrfromstr("name"), fstrfromstr("Alice"));
-				JsonInteger(&f, fstrfromstr("score"), 12345);
-				JsonFloat(&f, fstrfromstr("health"), 0.85f);
-				JsonArrayBegin(&f, fstrfromstr("position"));
+				JsonString(&f, fstrstr("name"), fstrstr("Alice"));
+				JsonInteger(&f, fstrstr("score"), 12345);
+				JsonFloat(&f, fstrstr("health"), 0.85f);
+				JsonArrayBegin(&f, fstrstr("position"));
 				for (I32 i = 0; i < 3; i++)
 				{
 					JsonFloat(&f, FSTR_INVALID, (F32)(i * 1.5f));
 				}
 				JsonArrayEnd(&f);
 
-				JsonArrayBegin(&f, fstrfromstr("inventory"));
+				JsonArrayBegin(&f, fstrstr("inventory"));
 				{
-					JsonString(&f, FSTR_INVALID, fstrfromstr("Sword"));
-					JsonString(&f, FSTR_INVALID, fstrfromstr("Hammer"));
+					JsonString(&f, FSTR_INVALID, fstrstr("Sword"));
+					JsonString(&f, FSTR_INVALID, fstrstr("Hammer"));
 				}
 				JsonArrayEnd(&f);
 
-				JsonObjectBegin(&f, fstrfromstr("skills"));
+				JsonObjectBegin(&f, fstrstr("skills"));
 				JsonObjectEnd(&f);
-				JsonFloat(&f, fstrfromstr("movement speed"), 4.512331);
+				JsonFloat(&f, fstrstr("movement speed"), 4.512331);
 			}
 			JsonObjectEnd(&f);
 		}
