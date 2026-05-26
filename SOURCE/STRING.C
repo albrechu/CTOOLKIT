@@ -3,6 +3,10 @@
 #include <string.h>
 #include <ctype.h>
 
+VOID FStrFree(PALLOCATOR allocator, FSTR s)
+{
+    Free(allocator, (PVOID)s.str);
+}
 BOOL FStrEqual(FSTR s1, FSTR s2)
 {
     if (fstrinvalid(s1) or fstrinvalid(s2)) return false;

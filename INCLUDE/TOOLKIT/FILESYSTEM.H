@@ -67,6 +67,7 @@ FSTR PathExecutableDirectory(OPATH path);
 BOOL PathSetWorkingDir(FSTR path);
 BOOL PathSetWorkingDirToExecutable(VOID);
 FSTR PathParent(FSTR path);
+FSTR PathJoin(PALLOCATOR allocator, U32 strings_count, PFSTR strings);
 
 #ifdef __cplusplus
 }

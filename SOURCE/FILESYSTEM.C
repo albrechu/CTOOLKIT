@@ -735,3 +735,14 @@ FSTR PathParent(FSTR path)
     }
     return last ? path : FSTR_INVALID;
 }
+FSTR PathJoin(PALLOCATOR allocator, U32 strings_count, PFSTR strings)
+{
+    return FStrJoinList(allocator, 
+#ifdef _WIN32
+        '\\',
+#else
+        '/',
+#endif
+        strings_count, strings
+    );
+}
