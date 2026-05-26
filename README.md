@@ -85,26 +85,26 @@ ArenaRewind(arena, snap); // rewind arena to snapshot, freeing str
 allocator = ArenaAllocator(arena); 
 
 /// POOL
-PPOOL pool = LoadPool(allocator, sizeof(double), 16); 
+PPOOL pool = LoadPool(allocator, sizeof(F64), 16); 
 df(FreePool, pool); // Defer freeing the pool
 
-*(F32 *)PoolPut(pool) = 3.1415; // allocate a double from the pool
-*(F32 *)PoolPutz(pool) = 2.7182;
-F32 *x = (F32 *)PoolPutz(pool);
-*x = 42;
+*(F64 *)PoolPut(pool) = 3.1415; // allocate a double from the pool
+*(F64 *)PoolPutz(pool) = 2.7182;
+F64 *x = (F64 *)PoolPutz(pool);
+*x = 42.0;
 PoolDel(pool, x); // Return x to the pool
 
-F32 *val;
+F64 *val;
 POOLITER it;
 PoolBeginRev(pool, &it); // Lock pool and reverse iterate.
-while ((val = (I32 *)PoolNextRev(&it)))
+while ((val = (F64 *)PoolNextRev(&it)))
 {
 }
 PoolEndRev(&it); // Unlock pool
 
 it = { 0 };
 PoolBegin(pool, &it); // Lock pool and iterate.
-while ((val = (I32 *)PoolNext(&it)))
+while ((val = (F64 *)PoolNext(&it)))
 {
 }
 PoolEnd(&it); // Unlock pool

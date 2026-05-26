@@ -15,7 +15,7 @@ int main()
 	allocator = ArenaAllocator(arena);
 	for (U64 i = 0; i < 64; i++)
 	{
-		_ = Alloc(&allocator, 64 * sizeof(double), alignof(double));
+		_ = Alloc(&allocator, 64 * sizeof(F64), alignof(F64));
 	}
 
 	PPOOL pool = LoadPool(allocator, sizeof(I32), 256);
