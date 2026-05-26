@@ -8,8 +8,23 @@ int main()
 
 	ALLOCATOR allocator = DefaultAllocator();
 
+	PMUTEX mtx = LoadMutex(&allocator);
+	df(FreeMutex, mtx);
+	PCONDITIONVARIABLE cv = LoadConditionVariable(&allocator);
+	df(FreeConditionVariable, cv);
+	volatile U32 a = 0;
+	StoreU32(&a, 42);
+	volatile PVOID b = cv;
+	StorePtr(&b, null);
+
 	PJOBPOOL pool = LoadJobPool(allocator, 2, 256);
 	df(FreeJobPool, pool);
+	JobPoolDispatchN(pool, null, 64, 8, [](PVOID data, U64 start, U64 end) { 
+		while (start != end)
+		{
+			specln("Work %llu", start++);
+		}
+	}, null);
 
 	PJOBGRAPH graph = LoadJobGraph(allocator, pool);
 	df(FreeJobGraph, graph);

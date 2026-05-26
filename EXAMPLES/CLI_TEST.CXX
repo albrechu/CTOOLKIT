@@ -50,6 +50,7 @@ int main()
 	}
 	
 	ALLOCATOR allocator = DefaultAllocator();
+
 	FSTR args[] = 
 	{ 
 		fstrstr("powershell.exe"),
@@ -59,6 +60,7 @@ int main()
 		fstrstr("-Command"),
 		fstrstr("Get-Date")
 	};
+	_ = Run(&allocator, arrsize(args), args);
 	PPROCESS process = LoadProcess(&allocator, PROCESSMODE_READ, arrsize(args), args);
 	if (process)
 	{

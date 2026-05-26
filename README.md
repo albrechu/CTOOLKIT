@@ -4,8 +4,34 @@ using as less code as possible. Use at your own risk.
 
 target_link_libraries(your_project PRIVATE TOOLKIT::TOOLKIT) // Link all
 
+## TABLE OF CONTENTS
+1. [GENERAL]
+	1. [OPERATIONS]
+	2. [BUNDLE]
+	3. [DEFER]
+2. [ALLOCATORS]
+	1. [DEFAULT (MALLOC/FREE)]
+	2. [ARENA]
+	3. [POOL]
+3. [CLI]
+	1. [RUN PROCESS]
+	2. [WITH PIPES]
+4. [THREAD]
+	1. [MUTEX, CONDITION VARIABLE, ATOMICS]
+	2. [JOB POOL]
+	3. [JOB GRAPH (DAG)]
+5. [FILE]
+	1. [GENERAL]
+	2. [INI]
+		1. [INI WRITING]
+		2. [INI READING]
+	3. [JSON]
+		1. [JSON WRITING]
+		2. [JSON READING]
+	4. [MESSAGEPACK]
+
 ## GENERAL
-### Operations
+### OPERATIONS
 ```c
 alignof(x);                           // alignment of type x
 alignas(16);                          // align type to 16 bytes
@@ -22,7 +48,7 @@ breakpoint();                         // trigger a breakpoint
 unreachable();                        // mark code path as unreachable
 LIT(VEC3, .x = 50, .y = 10, .z = 30); // create type literal with field values
 ```
-### Bundle
+### BUNDLE
 ```c
 U64 size = 0;                     
 I32 *a = packadd(size, I32, 10);
@@ -35,7 +61,7 @@ packfix(bundle, b);
 free(bundle); 
 ```
 ### DEFER
-No Error
+#### No Error
 ```c
 dfs(16); // Define a defer stack with 16 items capacity
 PVOID ptr = malloc(100);
@@ -48,7 +74,7 @@ df(free, ptr);
 dfflush();
 return 0; 
 ```
-Error
+#### Error
 ```c
 errdfs(16); // Define a defer stack with 16 items capacity
 PVOID ptr = malloc(100);
@@ -64,13 +90,15 @@ return ptr; // No error, no need to flush
 ```c
 #include <TOOLKIT/ALLOCATOR.H>
 dfs(16);
-
-/// Default Allocator (malloc/free)
-ALLOCATOR allocator = GetDefaultAllocator();
+```
+### DEFAULT (MALLOC/FREE)
+```c
+ALLOCATOR allocator = DefaultAllocator();
 PVOID mem = Alloc(&allocator, 256 * sizeof(U32), alignof(U32)); // allocate 256 bytes
 Free(&allocator, mem); 
-
-/// ARENA
+```
+### ARENA
+```c
 PARENA arena = LoadArena(allocator, 1024); // default_blocksize = 1024
 df(FreeArena, arena); // Defer freeing the arena
 
@@ -79,17 +107,17 @@ PVOID b = ArenaPutz(arena, 256); // allocate zeroed 256 bytes from arena
 ArenaClear(arena);
 a = ArenaPut(arena, 256);
 SNAPSHOT snap = ArenaSnap(arena); // take a snapshot of arena state
-FSTR str = ArenaStrdup(arena, fstrfromstr("Hello, World!"));
+FSTR str = ArenaStrdup(arena, fstrstr("Hello, World!"));
 ArenaRewind(arena, snap); // rewind arena to snapshot, freeing str
-
 allocator = ArenaAllocator(arena); 
-
-/// POOL
+```
+###  POOL
+```c
 PPOOL pool = LoadPool(allocator, sizeof(F64), 16); 
 df(FreePool, pool); // Defer freeing the pool
 
 *(F64 *)PoolPut(pool) = 3.1415; // allocate a double from the pool
-*(F64 *)PoolPutz(pool) = 2.7182;
+*(F64 *)PoolPutz(pool) = 2.7182; // allocate zeroed memory
 F64 *x = (F64 *)PoolPutz(pool);
 *x = 42.0;
 PoolDel(pool, x); // Return x to the pool
@@ -108,16 +136,15 @@ while ((val = (F64 *)PoolNext(&it)))
 {
 }
 PoolEnd(&it); // Unlock pool
-
-// Cleanup
-dfflush(); // Free evrything
+```
+```c
+dfflush(); // Cleanup
 ```
 ## CLI
+### PARSING
 ```c
-/// Parsing
-// Set default values for arguments
-I32  a = 0;
-F32  b = 0;
+I32  a = 2;
+F32  b = 3;
 BOOL c = false;
 CSTR d = "Default";
 PATH e = "V:/Default/Path/To/Your/Folder/Or/File";
@@ -143,15 +170,18 @@ ARGOPTION options[] =
 };
 if (!LoadArgs(argc, argv, arrsize(options), options))
 	return -1
-
-/// Progressbar
+```
+### PROGRESSBAR
+```c
 for (U64 i = 0; i < (U64)1e9; i++)
 {
 	if (i %  9999999ULL == 0)
 		Progress(LOGGING_SPECIAL, rounddiv(i,  9999999ULL), "Processing...");
 }
-
-/// PROCESS WITH PIPES
+```
+### PROCESS
+#### RUN PROCESS
+```c
 ALLOCATOR allocator = DefaultAllocator();
 FSTR args[] = 
 { 
@@ -162,6 +192,10 @@ FSTR args[] =
 	fstrstr("-Command"),
 	fstrstr("Get-Date")
 };
+_ = Run(&allocator, arrsize(args), args);
+```
+#### WITH PIPES
+```c
 PPROCESS process = LoadProcess(&allocator, PROCESSMODE_READ, arrsize(args), args);
 if (process)
 {
@@ -181,16 +215,36 @@ if (process)
 ```
 
 ## THREAD
+### MUTEX, CONDITION VARIABLE, ATOMICS
 ```c
 #include <TOOLKIT/THREAD.H>
 #include <TOOLKIT/CLI.H>
 
 dfs(16);
 ALLOCATOR allocator = DefaultAllocator();
-
+. 
+PMUTEX mtx = LoadMutex(&allocator);
+df(FreeMutex, mtx);
+PCONDITIONVARIABLE cv = LoadConditionVariable(&allocator);
+df(FreeConditionVariable, cv
+volatile U32 a = 0;
+StoreU32(&a, 42);
+volatile PVOID b = cv;
+StorePtr(&b, null);
+```
+### JOB POOL
+```c
 PJOBPOOL pool = LoadJobPool(allocator, 2, 256);
 df(FreeJobPool, pool);
-
+JobPoolDispatchN(pool, null, 64, 8, [](PVOID data, U64 start, U64 end) { 
+	while (start != end)
+	{
+		specln("Work %llu", start++);
+	}
+}, null);
+```
+### JOB GRAPH (DAG)
+```c
 PJOBGRAPH graph = LoadJobGraph(allocator, pool);
 df(FreeJobGraph, graph);
 
@@ -218,11 +272,12 @@ JobPoolWait(pool);
 
 JobGraphRun(graph);
 JobPoolWait(pool);
-
+```
+```c
 dfflush();
 ```
-
 ## FILE
+### GENERAL
 ```c
 #include <TOOLKIT/FILE.H>
 #include <TOOLKIT/CLI.H> // For printing
@@ -231,7 +286,7 @@ PathSetWorkingDirToExecutable();
 
 /// File Reading
 FILEDATA f;
-if (BeginFile(DefaultAllocator(), fstrfromstr("../CMakeCache.txt"), FILEMODE_READ, 0, &f) == OK)
+if (BeginFile(DefaultAllocator(), fstrstr("../CMakeCache.txt"), FILEMODE_READ, 0, &f) == OK)
 {
 	FSTR content;
 	RESULT rc = FileReadAll(&f, true, &content);
@@ -243,25 +298,28 @@ if (BeginFile(DefaultAllocator(), fstrfromstr("../CMakeCache.txt"), FILEMODE_REA
 	noteln("File content:\n%.*s", (int)content.size, content.str);
 	EndFile(&f);
 }
-
-/// INI Writing
-if (BeginFile(DefaultAllocator(), fstrfromstr("config.ini"), FILEMODE_WRITETEXT, 0, &f) == OK)
+```
+### INI
+#### INI WRITING
+```c
+if (BeginFile(DefaultAllocator(), fstrstr("config.ini"), FILEMODE_WRITETEXT, 0, &f) == OK)
 {
 	// [Settings]
-	IniGroup(&f, fstrfromstr("Settings"));
-	IniFloat(&f, fstrfromstr("Volume"), 0.75f);
-	IniInteger(&f, fstrfromstr("ResolutionWidth"), 1920);
-	IniBool(&f, fstrfromstr("Fullscreen"), true);
+	IniGroup(&f, fstrstr("Settings"));
+	IniFloat(&f, fstrstr("Volume"), 0.75f);
+	IniInteger(&f, fstrstr("ResolutionWidth"), 1920);
+	IniBool(&f, fstrstr("Fullscreen"), true);
 	// [User]
-	IniGroup(&f, fstrfromstr("User"));
-	IniString(&f, fstrfromstr("Username"), fstrfromstr("JohnDoe"));
-	IniInteger(&f, fstrfromstr("Age"), 42);
+	IniGroup(&f, fstrstr("User"));
+	IniString(&f, fstrstr("Username"), fstrstr("JohnDoe"));
+	IniInteger(&f, fstrstr("Age"), 42);
 
 	EndFile(&f);
 }
-
-/// INI Reading
-if (BeginFile(DefaultAllocator(), fstrfromstr("config.ini"), FILEMODE_READTEXT, 0, &f) == OK)
+```
+#### INI READING
+```c
+if (BeginFile(DefaultAllocator(), fstrstr("config.ini"), FILEMODE_READTEXT, 0, &f) == OK)
 {
 	INIENTRY entry;
 	while (IniReadNextEntry(&f, &entry) == OK)
@@ -285,46 +343,48 @@ if (BeginFile(DefaultAllocator(), fstrfromstr("config.ini"), FILEMODE_READTEXT, 
 			break;
 		}
 	}
-
 	EndFile(&f);
 }
-
-/// JSON Writing
-if (BeginFile(DefaultAllocator(), fstrfromstr("test.json"), FILEMODE_WRITETEXT, 0, &f) == OK)
+```
+### JSON
+#### JSON WRITING
+```c
+if (BeginFile(DefaultAllocator(), fstrstr("test.json"), FILEMODE_WRITETEXT, 0, &f) == OK)
 {
 	JsonBegin(&f);
 	{
-		JsonObjectBegin(&f, fstrfromstr("player"));
+		JsonObjectBegin(&f, fstrstr("player"));
 		{
-			JsonString(&f, fstrfromstr("name"), fstrfromstr("Alice"));
-			JsonInteger(&f, fstrfromstr("score"), 12345);
-			JsonFloat(&f, fstrfromstr("health"), 0.85f);
-			JsonArrayBegin(&f, fstrfromstr("position"));
+			JsonString(&f, fstrstr("name"), fstrstr("Alice"));
+			JsonInteger(&f, fstrstr("score"), 12345);
+			JsonFloat(&f, fstrstr("health"), 0.85f);
+			JsonArrayBegin(&f, fstrstr("position"));
 			for (I32 i = 0; i < 3; i++)
 			{
 				JsonFloat(&f, FSTR_INVALID, (F32)(i * 1.5f));
 			}
 			JsonArrayEnd(&f);
 
-			JsonArrayBegin(&f, fstrfromstr("inventory"));
+			JsonArrayBegin(&f, fstrstr("inventory"));
 			{
-				JsonString(&f, FSTR_INVALID, fstrfromstr("Sword"));
-				JsonString(&f, FSTR_INVALID, fstrfromstr("Hammer"));
+				JsonString(&f, FSTR_INVALID, fstrstr("Sword"));
+				JsonString(&f, FSTR_INVALID, fstrstr("Hammer"));
 			}
 			JsonArrayEnd(&f);
 
-			JsonObjectBegin(&f, fstrfromstr("skills"));
+			JsonObjectBegin(&f, fstrstr("skills"));
 			JsonObjectEnd(&f);
-			JsonFloat(&f, fstrfromstr("movement speed"), 4.512331);
+			JsonFloat(&f, fstrstr("movement speed"), 4.512331);
 		}
 		JsonObjectEnd(&f);
 	}
 	JsonEnd(&f);
 	EndFile(&f);
 }
-
-/// JSON Reading
-if (BeginFile(DefaultAllocator(), fstrfromstr("test.json"), FILEMODE_READTEXT, 0, &f) == OK)
+```
+#### JSON READING
+```c
+if (BeginFile(DefaultAllocator(), fstrstr("test.json"), FILEMODE_READTEXT, 0, &f) == OK)
 {
 	JSONENTRY entry;
 	while (JsonReadNextEntry(&f, &entry) == OK)
@@ -360,7 +420,7 @@ if (BeginFile(DefaultAllocator(), fstrfromstr("test.json"), FILEMODE_READTEXT, 0
 	}
 	EndFile(&f);
 }
-
-// MessagePack
-
+```
+### MESSAGEPACK
+```c
 ```
