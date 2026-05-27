@@ -8,6 +8,7 @@
 #include <TOOLKIT/CLI.H>
 #include <TOOLKIT/COMPRESSION.H>
 #include <TOOLKIT/ALLOCATOR.H>
+#include <TOOLKIT/STRING.H>
 
 RESULT ErrnoAsResult(errno_t err)
 {
@@ -73,7 +74,7 @@ RESULT FileOpen(FSTR path, FILEMODE mode, PFILEDATA file)
 	if (rc == OK)
 	{
 		file->File = (PFILE)stream;
-		if (mode == FILEMODE_READ || mode == FILEMODE_READTEXT)
+		if (mode == FILEMODE_READ or mode == FILEMODE_READTEXT)
 		{
 			fseek(stream, 0, SEEK_END);
 			long size = ftell(stream);
@@ -110,7 +111,7 @@ RESULT FileReopen(PFILEDATA file, FILEMODE mode)
 	if (rc == OK)
 	{
 		file->File = (PFILE)stream;
-		if (mode == FILEMODE_READ || mode == FILEMODE_READTEXT)
+		if (mode == FILEMODE_READ or mode == FILEMODE_READTEXT)
 		{
 			fseek(stream, 0, SEEK_END);
 			long size = ftell(stream);
@@ -402,7 +403,7 @@ static PCHAR Trim(PCHAR str)
 	while (isspace((U8)*str)) str++;
 	if (*str == '\0') return str;
 	PCHAR end = str + strlen(str) - 1;
-	while (end > str && isspace((U8)*end)) --end;
+	while (end > str and isspace((U8)*end)) --end;
 	end[1] = '\0';
 	return str;
 }
@@ -414,7 +415,7 @@ RESULT IniReadNextEntry(PFILEDATA filedata, PINIENTRY entry)
 	while ((rc = FileReadLine(filedata, '\n', '\0', true, &line)) == OK)
 	{
 		PCHAR current = Trim(line.str);
-		if (*current == '\0' || *current == ';' || *current == '#') continue; // Empty/Comment
+		if (*current == '\0' or *current == ';' or *current == '#') continue; // Empty/Comment
 
 		if (*current == '[') // [GroupName]
 		{
@@ -452,7 +453,7 @@ RESULT IniReadNextEntry(PFILEDATA filedata, PINIENTRY entry)
 				entry->Value.Float = (F32)atof(value);
 				entry->ValueType   = VALUETYPE_FLOAT;
 			}
-			else if (isdigit(value[0]) || (value[0] == '-' && isdigit(value[1]))) 
+			else if (isdigit(value[0]) or (value[0] == '-' and isdigit(value[1]))) 
 			{
 				entry->Value.Int = atoi(value);
 				entry->ValueType = VALUETYPE_INT;
@@ -599,26 +600,20 @@ VOID JsonReadReset(PFILEDATA filedata)
 }
 RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 {
-	assert((filedata->Mode == FILEMODE_READTEXT || filedata->Mode == FILEMODE_READ) && "Not in valid read mode.");
-	if (!filedata || !entry) return INVALID_PARAMETER;
+	assert((filedata->Mode == FILEMODE_READTEXT || filedata->Mode == FILEMODE_READ) and "Not in valid read mode.");
+	assert(filedata and entry and "Parameters need to be valid.");
 
-	FSTR *line = &filedata->Json.CurrentLine;
+	FSTR *line  = &filedata->Json.CurrentLine;
 	U64 *offset = &filedata->Json.LineOffset;
-
 	while (true)
 	{
 		// If we've consumed the current line, read next one
 		if (*offset >= line->size)
 		{
 			RESULT res = FileReadLine(filedata, '\n', '\0', true, line);
-			if (res == END_OF_FILE) 
+			if (res != OK) // E.g. error or  eof
 			{
 				JsonReadReset(filedata); // Reset state for potential future reads
-				return END_OF_FILE;
-			}
-			if (res != OK) 
-			{
-				JsonReadReset(filedata);
 				return res;
 			}
 			*offset = 0;
@@ -631,7 +626,7 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 			continue;
 		}
 
-		if (token == '{' || token == '[') // Array or Object start
+		if (token == '{' or token == '[') // Array or Object start
 		{
 			entry->ValueType = (token == '{') ? VALUETYPE_OBJECT : VALUETYPE_ARRAY;
 			entry->Depth = filedata->Json.Depth;
@@ -649,7 +644,7 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 			return OK;
 		}
 
-		if (token == '}' || token == ']')
+		if (token == '}' or token == ']')
 		{
 			if (filedata->Json.Depth > 0) filedata->Json.Depth--;
 			(*offset)++;
@@ -661,38 +656,36 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 		if (token == '"')
 		{
 			U64 search_ptr = *offset + 1;
-			while (search_ptr < line->size && line->str[search_ptr] != '"')
+			while (search_ptr < line->size and line->str[search_ptr] != '"')
 			{
 				if (line->str[search_ptr] == '\\') search_ptr++;
 				search_ptr++;
 			}
 			search_ptr++;
 
-			while (search_ptr < line->size &&
-				(line->str[search_ptr] == ' ' || line->str[search_ptr] == '\t'))
+			while (search_ptr < line->size and (line->str[search_ptr] == ' ' or line->str[search_ptr] == '\t'))
 			{
 				search_ptr++;
 			}
-			if (search_ptr < line->size && line->str[search_ptr] == ':')
-			{
+			if (search_ptr < line->size and line->str[search_ptr] == ':')
 				isKeyValuePair = true;
-			}
 		}
 
 		// Parse key if this is a key-value pair
 		if (isKeyValuePair)
 		{
+			// Read Key
 			entry->Key.Length = JsonParseString(line, offset, entry->Key.Name, sizeof(entry->Key.Name));
 			entry->Key.Hash = HashFNV1a(fdata(entry->Key.Name, entry->Key.Length));
 
+			// ':' after key
 			token = JsonSkipWhitespace(line, offset);
-			if (token != ':')  // Expected ':' after key
+			if (token != ':')  
 				return INVALID_FORMAT;
-			
 			(*offset)++; // step over ':'
-			token = JsonSkipWhitespace(line, offset);
 
-			// If token is '\0', we need to read the next line
+			// If next is '\0', read next line
+			token = JsonSkipWhitespace(line, offset);
 			if (token == '\0')
 			{
 				*offset = line->size; // Force read next line
@@ -700,6 +693,7 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 				continue; // Go back to top, will read new line and re-process
 			}
 
+			// Check for array or object 
 			if (token == '{')
 			{
 				entry->ValueType = VALUETYPE_OBJECT;
@@ -737,7 +731,7 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 			entry->Value.String.Hash = HashFNV1a(fdata(entry->Value.String.Name, entry->Value.String.Length));
 			return OK;
 		}
-		else if (token == '{' || token == '[')
+		else if (token == '{' or token == '[')
 		{
 			continue;
 		}
@@ -745,10 +739,10 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 		// Parse literals/numbers
 		CHAR value_segment[256] = { 0 };
 		U64 v_len = 0;
-		while (*offset < line->size && v_len < sizeof(value_segment) - 1)
+		while (*offset < line->size and v_len < sizeof(value_segment) - 1)
 		{
 			CHAR c = line->str[*offset];
-			if (c == ' ' || c == '\t' || c == ',' || c == '}' || c == ']' || c == ':')
+			if (c == ' ' or c == '\t' or c == ',' or c == '}' or c == ']' or c == ':')
 				break;
 			value_segment[v_len++] = c;
 			(*offset)++;
@@ -826,7 +820,7 @@ VOID CsvString(PFILEDATA filedata, FSTR value)
 //// READING ///////////////////////////
 RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 {
-	assert((filedata->Mode == FILEMODE_READTEXT || filedata->Mode == FILEMODE_READ) && "Not in valid read mode.");
+	assert((filedata->Mode == FILEMODE_READTEXT or filedata->Mode == FILEMODE_READ) and "Not in valid read mode.");
 	if (!filedata or !entry) return INVALID_PARAMETER;
 
 	FSTR *line = &filedata->Csv.CurrentLine;
@@ -853,13 +847,13 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 		(*offset)++; // Skip opening quote
 		U64 len = 0;
 
-		while (*offset < line->size && len < sizeof(entry->Value.String.Name) - 1)
+		while (*offset < line->size and len < sizeof(entry->Value.String.Name) - 1)
 		{
 			c = line->str[*offset];
 
 			if (c == '"') // Check for escaped quote ("")
 			{
-				if (*offset + 1 < line->size && line->str[*offset + 1] == '"')
+				if (*offset + 1 < line->size and line->str[*offset + 1] == '"')
 				{
 					entry->Value.String.Name[len++] = '"';
 					*offset += 2;
@@ -883,28 +877,28 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 		entry->Value.String.Hash      = HashFNV1a(fdata(entry->Value.String.Name, len));
 		entry->ValueType              = VALUETYPE_STRING;
 
-		while (*offset < line->size && line->str[*offset] != ',') // Skip to next comma or EOL
+		while (*offset < line->size and line->str[*offset] != ',') // Skip to next comma or EOL
 			(*offset)++;
 
-		if (*offset < line->size && line->str[*offset] == ',') // Skip comma
+		if (*offset < line->size and line->str[*offset] == ',') // Skip comma
 			(*offset)++;
 		return OK;
 	} // else: Handle unquoted values till comma or EOL
 
 	U64 len = 0;
 	CHAR value_buf[256];
-	while (*offset < line->size && line->str[*offset] != ',') 
+	while (*offset < line->size and line->str[*offset] != ',') 
 	{
 		if (len < sizeof(value_buf) - 1)
 			value_buf[len++] = line->str[*offset];
 		(*offset)++;
 	}
 
-	if (*offset < line->size && line->str[*offset] == ',')
+	if (*offset < line->size and line->str[*offset] == ',')
 		(*offset)++; // Skip comma
 
 	value_buf[len] = '\0'; // Null-terminate for easier processing
-	while (len > 0 && (value_buf[len - 1] == ' ' || value_buf[len - 1] == '\t')) // Trim trailing whitespaces
+	while (len > 0 and (value_buf[len - 1] == ' ' or value_buf[len - 1] == '\t')) // Trim trailing whitespaces
 		len--;
 	value_buf[len] = '\0';
 
@@ -915,10 +909,10 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 	} // else: Try to parse as number
 	
 	U64 i = 0;
-	while (i < len && (value_buf[i] == ' ' || value_buf[i] == '\t')) // Skip leading whitespaces
+	while (i < len and (value_buf[i] == ' ' or value_buf[i] == '\t')) // Skip leading whitespaces
 		i++;
 
-	if (i < len && value_buf[i] == '-') // Check for negative sign
+	if (i < len and value_buf[i] == '-') // Check for negative sign
 		i++;
 
 	// Check digits
@@ -926,16 +920,16 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 	bool has_decimal = false;
 	for (; i < len and is_number; i++)
 	{
-		if (value_buf[i] >= '0' && value_buf[i] <= '9')
+		if (value_buf[i] >= '0' and value_buf[i] <= '9')
 		{
 			continue;
 		}
-		else if (value_buf[i] == '.' && !has_decimal)
+		else if (value_buf[i] == '.' and !has_decimal)
 		{
 			has_decimal = true;
 			continue;
 		}
-		else if (value_buf[i] == ' ' || value_buf[i] == '\t') // Trailing whitespace
+		else if (value_buf[i] == ' ' or value_buf[i] == '\t') // Trailing whitespace
 		{
 			break;
 		}
@@ -946,7 +940,7 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 		}
 	}
 
-	if (is_number && has_decimal)
+	if (is_number and has_decimal)
 	{
 		entry->Value.Float = (F32)atof(value_buf);
 		entry->ValueType   = VALUETYPE_FLOAT;
@@ -993,19 +987,19 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 //// WRITING ///////////////////////////
 VOID MsgPackNull(PFILEDATA filedata)
 {
-	assert(filedata->Mode == FILEMODE_WRITE && "Not in write mode.");
+	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	const U8 v = 0xc0; // nil
 	fwrite(&v, 1, 1, (FILE *)filedata->File);
 }
 VOID MsgPackBool(PFILEDATA filedata, BOOL value)
 {
-	assert(filedata->Mode == FILEMODE_WRITE && "Not in write mode.");
+	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	const U8 v = value ? 0xc3 : 0xc2; // true : false
 	fwrite(&v, 1, 1, (FILE *)filedata->File);
 }
 VOID MsgPackInteger(PFILEDATA filedata, I32 value)
 {
-	assert(filedata->Mode == FILEMODE_WRITE && "Not in write mode.");
+	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	if (value >= 0)
 	{
 		if (value <= 127) // positive fixint
@@ -1063,7 +1057,7 @@ VOID MsgPackInteger(PFILEDATA filedata, I32 value)
 }
 VOID MsgPackFloat(PFILEDATA filedata, F32 value)
 {
-	assert(filedata->Mode == FILEMODE_WRITE && "Not in write mode.");
+	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	const U8 v = 0xca; // float32
 	fwrite(&v, sizeof(v), 1, (FILE *)filedata->File);
 
@@ -1073,7 +1067,7 @@ VOID MsgPackFloat(PFILEDATA filedata, F32 value)
 }
 VOID MsgPackString(PFILEDATA filedata, FSTR value)
 {
-	assert(filedata->Mode == FILEMODE_WRITE && "Not in write mode.");
+	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	if (value.size <= 31) // fixstr
 	{
 		const U8 v = 0xa0 | (U8)value.size; 
@@ -1102,7 +1096,7 @@ VOID MsgPackString(PFILEDATA filedata, FSTR value)
 }
 VOID MsgPackArrayBegin(PFILEDATA filedata, U32 count)
 {
-	assert(filedata->Mode == FILEMODE_WRITE && "Not in write mode.");
+	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 
 	if (count <= 15) // fixarray
 	{
@@ -1188,7 +1182,7 @@ VOID MsgPackReadReset(PFILEDATA filedata)
 }
 RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 {
-	assert(filedata->Mode == FILEMODE_READ && "Not in read mode.");
+	assert(filedata->Mode == FILEMODE_READ and "Not in read mode.");
 	if (!filedata or !entry) return INVALID_PARAMETER;
 	if (filedata->Offset >= filedata->FileSize) return END_OF_FILE;
 
@@ -1200,13 +1194,13 @@ RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 		entry->Value.Int = type;
 		return OK;
 	}
-	else if (type >= 0x80 && type <= 0x8f) // Fixmap (0x80 - 0x8f)
+	else if (type >= 0x80 and type <= 0x8f) // Fixmap (0x80 - 0x8f)
 	{
 		entry->ValueType = VALUETYPE_OBJECT;
 		entry->Value.Count = type & 0x0f;
 		return OK;
 	}
-	else if (type >= 0x90 && type <= 0x9f) // Fixarray (0x90 - 0x9f)
+	else if (type >= 0x90 and type <= 0x9f) // Fixarray (0x90 - 0x9f)
 	{
 		entry->ValueType = VALUETYPE_ARRAY;
 		entry->Value.Count = type & 0x0f;
@@ -1284,7 +1278,7 @@ RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 	case 0xd9: // str8
 	{
 		U32 len = MsgPackReadU8(filedata);
-		if (len < sizeof(entry->Value.String.Name) && filedata->Offset + len <= filedata->FileSize)
+		if (len < sizeof(entry->Value.String.Name) and filedata->Offset + len <= filedata->FileSize)
 		{
 			memcpy(entry->Value.String.Name, &filedata->Buffer.str[filedata->Offset], len);
 			entry->Value.String.Name[len] = '\0';
@@ -1299,7 +1293,7 @@ RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 	case 0xda: // str16
 	{
 		U32 len = MsgPackReadU16(filedata);
-		if (len < sizeof(entry->Value.String.Name) && filedata->Offset + len <= filedata->FileSize)
+		if (len < sizeof(entry->Value.String.Name) and filedata->Offset + len <= filedata->FileSize)
 		{
 			memcpy(entry->Value.String.Name, &filedata->Buffer.str[filedata->Offset], len);
 			entry->Value.String.Name[len] = '\0';
