@@ -563,7 +563,7 @@ BOOL IsPathFile(FSTR path)
 {
     PATH p;
     memcpy_s(p, sizeof(p) - 1, path.str, path.size);
-    p[path.size] = '0';
+    p[path.size] = '\0';
 #if defined(_WIN32)
     DWORD attr = GetFileAttributesA(p);
     return (attr != INVALID_FILE_ATTRIBUTES) and !(attr & FILE_ATTRIBUTE_DIRECTORY);
