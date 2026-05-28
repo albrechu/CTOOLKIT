@@ -16,6 +16,28 @@ BOOL FStrEqual(FSTR s1, FSTR s2)
     if (s1.size == 0) return true;
     return (memcmp(s1.str, s2.str, s1.size) == 0);
 }
+BOOL FStrEqualNoCase(FSTR s1, FSTR s2)
+{
+    if (fstrinvalid(s1) or fstrinvalid(s2)) return false;
+    if (s1.str == s2.str and s1.size == s2.size) return true;
+
+    if (s1.size != s2.size) return false;
+    if (s1.size == 0)       return true;
+
+    const U8 *p1 = (const U8 *)s1.str;
+    const U8 *p2 = (const U8 *)s2.str;
+    for (U64 i = 0; i < s1.size; i++) 
+    {
+        if (p1[i] != p2[i]) 
+        {
+            U8 c1 = p1[i] | 0x20;
+            U8 c2 = p2[i] | 0x20;
+            if (c1 != c2 or c1 < 'a' or c1 > 'z') 
+                return false;
+        }
+    }
+    return true;
+}
 I32 FStrCompare(FSTR s1, FSTR s2)
 {
     if (fstrinvalid(s1) or fstrinvalid(s2))
@@ -118,7 +140,7 @@ FSTR FStrJoin(PALLOCATOR allocator, U32 strings_count, PFSTR strings)
 //
 FSTR FStrFind(FSTR haystack, FSTR needle)
 {
-    if (fstrinvalid(haystack) || fstrinvalid(needle) || haystack.size < needle.size) return FSTR_INVALID;
+    if (fstrinvalid(haystack) or fstrinvalid(needle) or haystack.size < needle.size) return FSTR_INVALID;
 
     const CHAR needle_first = needle.str[0];
     U64 needle_len = needle.size;
@@ -161,7 +183,7 @@ FSTR FStrFind(FSTR haystack, FSTR needle)
 
 FSTR FStrFindNoCase(FSTR haystack, FSTR needle)
 {
-    if (fstrinvalid(haystack) || fstrinvalid(needle) || haystack.size < needle.size)
+    if (fstrinvalid(haystack) or fstrinvalid(needle) or haystack.size < needle.size)
         return FSTR_INVALID;
 
     const CHAR needle_first = (CHAR)tolower((unsigned char)needle.str[0]);

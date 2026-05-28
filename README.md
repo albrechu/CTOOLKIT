@@ -65,7 +65,7 @@ free(bundle);
 ```c
 dfs(16); // Define a defer stack with 16 items capacity
 PVOID ptr = malloc(100);
-if (ptr) {
+if (not ptr) {
 	dfflush(); // Execute deferred functions immediately
 	return -1;
 }
@@ -78,7 +78,7 @@ return 0;
 ```c
 errdfs(16); // Define a defer stack with 16 items capacity
 PVOID ptr = malloc(100);
-if (ptr) {
+if (not ptr) {
 	errdfflush(); // Execute deferred functions immediately
 	return null;
 }

@@ -8,6 +8,7 @@ extern "C" {
 
 VOID FStrFree(PALLOCATOR allocator, FSTR s);
 BOOL FStrEqual(FSTR s1, FSTR s2);
+BOOL FStrEqualNoCase(FSTR s1, FSTR s2);
 I32  FStrCompare(FSTR s1, FSTR s2);
 I64  FStrChr(FSTR s, CHAR c);
 FSTR FStrFind(FSTR haystack, FSTR needle);
