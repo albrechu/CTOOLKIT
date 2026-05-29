@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
-#include <assert.h>
 #include <TOOLKIT/CLI.H>
 #include <TOOLKIT/COMPRESSION.H>
 #include <TOOLKIT/ALLOCATOR.H>
@@ -47,7 +46,7 @@ RESULT BeginFile(ALLOCATOR allocator, FSTR path, FILEMODE mode, U64 initial_capa
 }
 RESULT FileOpen(FSTR path, FILEMODE mode, PFILEDATA file)
 {
-	assert(not fstrinvalid(path) and "Path string view needs to be valid.");
+	CAssert(not fstrinvalid(path) and "Path string view needs to be valid.");
 	if (file->File)
 	{
 		FileClose(file);
@@ -66,7 +65,7 @@ RESULT FileOpen(FSTR path, FILEMODE mode, PFILEDATA file)
 	case FILEMODE_WRITETEXT: file_mode = "wb"; break;
 	default: break;
 	}
-	assert(file_mode != null and "File mode needs to be known.");
+	CAssert(file_mode != null and "File mode needs to be known.");
 
 	FILE *stream;
 	errno_t err = fopen_s(&stream, file->Path, file_mode);
@@ -93,7 +92,7 @@ RESULT FileReopen(PFILEDATA file, FILEMODE mode)
 {
 	if (mode == file->Mode) // The same
 		return OK;
-	assert(file->File != null and "File must be open to reopen.");
+	CAssert(file->File != null and "File must be open to reopen.");
 
 	CSTR file_mode = null;
 	switch (mode)
@@ -129,7 +128,7 @@ RESULT FileReopen(PFILEDATA file, FILEMODE mode)
 }
 RESULT FileWriteAll(PFILEDATA file, BOOL as_text, FSTR content)
 {
-	assert(file->File != null and "File must be open to write to.");
+	CAssert(file->File != null and "File must be open to write to.");
 	RESULT rc;
 	if (as_text)
 	{
@@ -156,7 +155,7 @@ RESULT FileWriteAll(PFILEDATA file, BOOL as_text, FSTR content)
 }
 RESULT FileRead(PFILEDATA file, U64 count, PFSTR content)
 {
-	assert(file->File != null and "File must be open to read from.");
+	CAssert(file->File != null and "File must be open to read from.");
 	RESULT rc;
 	if ((rc = FileEnsureCapacity(file, count)))
 		return rc;
@@ -178,7 +177,7 @@ RESULT FileRead(PFILEDATA file, U64 count, PFSTR content)
 }
 RESULT FileReadAll(PFILEDATA file, BOOL as_text, PFSTR content)
 {
-	assert(file->File != null and "File must be open to read from.");
+	CAssert(file->File != null and "File must be open to read from.");
 	RESULT rc;
 	if (as_text)
 	{
@@ -281,7 +280,7 @@ static RESULT FileReReadBuffered(PFILEDATA file, PCHAR buffer, U64 buffer_size, 
 }
 RESULT FileWrite(PFILEDATA file, FSTR content, BOOL as_text)
 {
-	assert(file->File != null and "File must be open to write to.");
+	CAssert(file->File != null and "File must be open to write to.");
 	RESULT rc;
 	if (as_text)
 	{
@@ -302,7 +301,7 @@ RESULT FileWrite(PFILEDATA file, FSTR content, BOOL as_text)
 }
 RESULT FileReadLine(PFILEDATA file, CHAR terminator, CHAR terminator_replacement, BOOL as_text, PFSTR content)
 {
-	assert(file->File != null and "File must be open to read from.");
+	CAssert(file->File != null and "File must be open to read from.");
 	RESULT rc;
 	if (as_text)
 	{
@@ -374,27 +373,27 @@ VOID EndFile(PFILEDATA file)
 //// WRITING ///////////////////////////
 VOID IniGroup(PFILEDATA filedata, FSTR group)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	fprintf((FILE *)filedata->File, "[%.*s]\n", (int)group.size, group.str);
 }
 VOID IniInteger(PFILEDATA filedata, FSTR key, I32 value)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	fprintf((FILE *)filedata->File, "%.*s = %d\n", (int)key.size, key.str, (int)value);
 }
 VOID IniFloat(PFILEDATA filedata, FSTR key, F32 value)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	fprintf((FILE *)filedata->File, "%.*s = %g\n", (int)key.size, key.str, value); // auto-precision
 }
 VOID IniBool(PFILEDATA filedata, FSTR key, bool value)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	fprintf((FILE *)filedata->File, "%.*s = %.*s\n", (int)key.size, key.str, value ? 4 : 5, value ? "true" : "false");
 }
 VOID IniString(PFILEDATA filedata, FSTR key, FSTR value)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	fprintf((FILE *)filedata->File, "%.*s = %.*s\n", (int)key.size, key.str, (int)value.size, value.str);
 }
 //// READING ///////////////////////////
@@ -409,7 +408,7 @@ static PCHAR Trim(PCHAR str)
 }
 RESULT IniReadNextEntry(PFILEDATA filedata, PINIENTRY entry)
 {
-	assert(filedata->Mode == FILEMODE_READTEXT and "Not in read text mode.");
+	CAssert(filedata->Mode == FILEMODE_READTEXT and "Not in read text mode.");
 	FSTR line;
 	RESULT rc;
 	while ((rc = FileReadLine(filedata, '\n', '\0', true, &line)) == OK)
@@ -475,19 +474,19 @@ RESULT IniReadNextEntry(PFILEDATA filedata, PINIENTRY entry)
 //// WRITING ///////////////////////////
 VOID JsonBegin(PFILEDATA filedata)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	filedata->Json.Depth++;
 	fprintf((FILE *)filedata->File, "{\n");
 }
 VOID JsonEnd(PFILEDATA filedata)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	filedata->Json.Depth--;
 	fprintf((FILE *)filedata->File, "}\n");
 }
 VOID JsonObjectBegin(PFILEDATA filedata, FSTR key)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	if (key.size > 0)
 		fprintf((FILE *)filedata->File, "%*s\"%.*s\": {\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str);
 	else
@@ -496,13 +495,13 @@ VOID JsonObjectBegin(PFILEDATA filedata, FSTR key)
 }
 VOID JsonObjectEnd(PFILEDATA filedata)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	filedata->Json.Depth--;
 	fprintf((FILE *)filedata->File, "%*s},\n", 3 * filedata->Json.Depth, "");
 }
 VOID JsonArrayBegin(PFILEDATA filedata, FSTR key)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	if (key.size > 0)
 		fprintf((FILE *)filedata->File, "%*s\"%.*s\": [\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str);
 	else
@@ -511,13 +510,13 @@ VOID JsonArrayBegin(PFILEDATA filedata, FSTR key)
 }
 VOID JsonArrayEnd(PFILEDATA filedata)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	filedata->Json.Depth--;
 	fprintf((FILE *)filedata->File, "%*s],\n", 3 * filedata->Json.Depth, "");
 }
 VOID JsonInteger(PFILEDATA filedata, FSTR key, I32 value)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	if (key.size > 0)
 		fprintf((FILE *)filedata->File, "%*s\"%.*s\": %d,\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str, (int)value);
 	else
@@ -525,7 +524,7 @@ VOID JsonInteger(PFILEDATA filedata, FSTR key, I32 value)
 }
 VOID JsonFloat(PFILEDATA filedata, FSTR key, F32 value)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	if (key.size > 0)
 		fprintf((FILE *)filedata->File, "%*s\"%.*s\": %g,\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str, value);
 	else
@@ -533,7 +532,7 @@ VOID JsonFloat(PFILEDATA filedata, FSTR key, F32 value)
 }
 VOID JsonBool(PFILEDATA filedata, FSTR key, BOOL value)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	if (key.size > 0)
 		fprintf((FILE *)filedata->File, "%*s\"%.*s\": %.*s,\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str, value ? 4 : 5, value ? "true" : "false");
 	else
@@ -541,7 +540,7 @@ VOID JsonBool(PFILEDATA filedata, FSTR key, BOOL value)
 }
 VOID JsonString(PFILEDATA filedata, FSTR key, FSTR value)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	if (key.size > 0)
 		fprintf((FILE *)filedata->File, "%*s\"%.*s\": \"%.*s\",\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str, (int)value.size, value.str);
 	else
@@ -549,7 +548,7 @@ VOID JsonString(PFILEDATA filedata, FSTR key, FSTR value)
 }
 VOID JsonNull(PFILEDATA filedata, FSTR key)
 {
-	assert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
 	if (key.size > 0)
 		fprintf((FILE *)filedata->File, "%*s\"%.*s\": null,\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str);
 	else
@@ -600,8 +599,8 @@ VOID JsonReadReset(PFILEDATA filedata)
 }
 RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 {
-	assert((filedata->Mode == FILEMODE_READTEXT || filedata->Mode == FILEMODE_READ) and "Not in valid read mode.");
-	assert(filedata and entry and "Parameters need to be valid.");
+	CAssert((filedata->Mode == FILEMODE_READTEXT || filedata->Mode == FILEMODE_READ) and "Not in valid read mode.");
+	CAssert(filedata and entry and "Parameters need to be valid.");
 
 	FSTR *line  = &filedata->Json.CurrentLine;
 	U64 *offset = &filedata->Json.LineOffset;
@@ -820,7 +819,7 @@ VOID CsvString(PFILEDATA filedata, FSTR value)
 //// READING ///////////////////////////
 RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 {
-	assert((filedata->Mode == FILEMODE_READTEXT or filedata->Mode == FILEMODE_READ) and "Not in valid read mode.");
+	CAssert((filedata->Mode == FILEMODE_READTEXT or filedata->Mode == FILEMODE_READ) and "Not in valid read mode.");
 	if (!filedata or !entry) return INVALID_PARAMETER;
 
 	FSTR *line = &filedata->Csv.CurrentLine;
@@ -987,19 +986,19 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 //// WRITING ///////////////////////////
 VOID MsgPackNull(PFILEDATA filedata)
 {
-	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	const U8 v = 0xc0; // nil
 	fwrite(&v, 1, 1, (FILE *)filedata->File);
 }
 VOID MsgPackBool(PFILEDATA filedata, BOOL value)
 {
-	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	const U8 v = value ? 0xc3 : 0xc2; // true : false
 	fwrite(&v, 1, 1, (FILE *)filedata->File);
 }
 VOID MsgPackInteger(PFILEDATA filedata, I32 value)
 {
-	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	if (value >= 0)
 	{
 		if (value <= 127) // positive fixint
@@ -1057,7 +1056,7 @@ VOID MsgPackInteger(PFILEDATA filedata, I32 value)
 }
 VOID MsgPackFloat(PFILEDATA filedata, F32 value)
 {
-	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	const U8 v = 0xca; // float32
 	fwrite(&v, sizeof(v), 1, (FILE *)filedata->File);
 
@@ -1067,7 +1066,7 @@ VOID MsgPackFloat(PFILEDATA filedata, F32 value)
 }
 VOID MsgPackString(PFILEDATA filedata, FSTR value)
 {
-	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	if (value.size <= 31) // fixstr
 	{
 		const U8 v = 0xa0 | (U8)value.size; 
@@ -1096,7 +1095,7 @@ VOID MsgPackString(PFILEDATA filedata, FSTR value)
 }
 VOID MsgPackArrayBegin(PFILEDATA filedata, U32 count)
 {
-	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 
 	if (count <= 15) // fixarray
 	{
@@ -1120,7 +1119,7 @@ VOID MsgPackArrayBegin(PFILEDATA filedata, U32 count)
 }
 VOID MsgPackMapBegin(PFILEDATA filedata, U32 count)
 {
-	assert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
+	CAssert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
 	if (count <= 15) // fixmap
 	{
 		const U8 v = 0x80 | (U8)count;
@@ -1182,7 +1181,7 @@ VOID MsgPackReadReset(PFILEDATA filedata)
 }
 RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 {
-	assert(filedata->Mode == FILEMODE_READ and "Not in read mode.");
+	CAssert(filedata->Mode == FILEMODE_READ and "Not in read mode.");
 	if (!filedata or !entry) return INVALID_PARAMETER;
 	if (filedata->Offset >= filedata->FileSize) return END_OF_FILE;
 

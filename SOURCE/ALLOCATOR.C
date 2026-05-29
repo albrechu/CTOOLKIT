@@ -1,7 +1,7 @@
 #include <TOOLKIT/ALLOCATOR.H>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
+#include <stdio.h>
 
 #if defined(_WIN32)
 #	define WIN32_LEAN_AND_MEAN
@@ -83,7 +83,7 @@ PVOID PoolAlloc(PVOID user_data, U64 size, U64 alignment)
 {
     _ = alignment;
     PPOOL pool = (PPOOL)user_data;
-    assert(PooSameAlignedObjSize(pool, size) and "You are trying to allocate an object type that differs in size from the pool object size.");
+    CAssert(PooSameAlignedObjSize(pool, size) and "You are trying to allocate an object type that differs in size from the pool object size.");
     return PoolPut(pool);
 }
 PVOID PoolRealloc(PVOID user_data, PVOID ptr, U64 size, U64 alignment)
@@ -135,7 +135,7 @@ PARENA LoadArena(ALLOCATOR allocator, U64 block_size)
 }
 VOID FreeArena(PARENA arena)
 {
-    assert(arena != null and "Freeing a invalid arena.");
+    CAssert(arena != null and "Freeing a invalid arena.");
     PARENABLOCK block = arena->Head;
     while (block)
     {
@@ -512,7 +512,7 @@ PPOOL LoadPool(ALLOCATOR allocator, U64 ObjSize, U64 BlockCap)
 
 void FreePool(PPOOL P)
 {
-	assert(P and "Pool needs to be valid");
+	CAssert(P and "Pool needs to be valid");
 #ifdef POOL_THREAD_CACHE_SIZE
 	POOL_TLS_DELETE(P->ThreadKey);
 #endif
@@ -535,7 +535,7 @@ void FreePool(PPOOL P)
 
 PVOID PoolPut(PPOOL P)
 {
-	assert(P and "Pool needs to be valid");
+	CAssert(P and "Pool needs to be valid");
 #ifdef POOL_THREAD_CACHE_SIZE
 	PTHREADCACHE TC = ThreadCacheGet(P);
 	if (TC)
@@ -594,7 +594,7 @@ PVOID PoolPutz(PPOOL P)
 
 void PoolDel(PPOOL P, PVOID Ptr)
 {
-	assert(P and Ptr and "Pool and ptr needs to be valid");
+	CAssert(P and Ptr and "Pool and ptr needs to be valid");
 #ifdef POOL_THREAD_CACHE_SIZE
 	PTHREADCACHE TC = ThreadCacheGet(P);
 	if (TC) {
@@ -629,7 +629,7 @@ void PoolDel(PPOOL P, PVOID Ptr)
 }
 
 void TrimPool(PPOOL P) {
-	assert(P and "Pool needs to be valid");
+	CAssert(P and "Pool needs to be valid");
 
 	POOL_MUTEX_LOCK(P->Lock);
 	PPOOLBLOCK ToFree = P->Empty;
@@ -651,7 +651,7 @@ void TrimPool(PPOOL P) {
 
 void ClearPool(PPOOL P)
 {
-	assert(P and "Pool needs to be valid");
+	CAssert(P and "Pool needs to be valid");
 #ifdef POOL_THREAD_CACHE_SIZE
 	PoolFlushThreadCache(P);
 #endif
@@ -710,7 +710,7 @@ void PoolFlushThreadCache(PPOOL P) {
 
 void PoolStats(const PPOOL P, PPOOLSTATS Out)
 {
-	assert(P and Out and "Pool and stats need to be valid");
+	CAssert(P and Out and "Pool and stats need to be valid");
 
 	PPOOL Mp = (PPOOL)(uintptr_t)P;
 	POOL_MUTEX_LOCK(Mp->Lock);
@@ -742,7 +742,7 @@ BOOL PooSameAlignedObjSize(const PPOOL P, U64 ObjSize)
 
 void PoolBegin(PPOOL P, PPOOLITER It)
 {
-	assert(P and It and "Pool and iterator need to be valid");
+	CAssert(P and It and "Pool and iterator need to be valid");
 	It->Pool = P;
 	It->List = 0;
 	It->Slot = 0;
@@ -755,7 +755,7 @@ void PoolBegin(PPOOL P, PPOOLITER It)
 PVOID PoolNext(POOLITER *It)
 {
 	PPOOL P = It->Pool;
-	assert(P and "Pool in iterator needs to be valid.");
+	CAssert(P and "Pool in iterator needs to be valid.");
 	
 	while (It->Block)
 	{
@@ -797,7 +797,7 @@ void PoolEnd(POOLITER *It)
 
 void PoolBeginRev(PPOOL P, PPOOLITER It)
 {
-	assert(P and It and "Pool and iterator need to be valid");
+	CAssert(P and It and "Pool and iterator need to be valid");
 	It->Pool = P;
 	It->List = 0;
 	POOL_MUTEX_LOCK(P->Lock);
@@ -858,3 +858,18 @@ void PoolEndRev(PPOOLITER It)
 	POOL_MUTEX_UNLOCK(It->Pool->Lock);
 	It->Pool = null;
 }
+
+#ifdef NDEBUG
+void CAssertFailed(const char *expression, const char *file, int line)
+{
+   _ = expression;
+   _ = file;
+   _ = line;
+}
+#else
+void CAssertFailed(const char *expression, const char *file, int line)
+{
+   printf("Assertion failed: (%s), file %s, line %d\n", expression, file, line);
+   abort();
+}
+#endif

@@ -2,7 +2,6 @@
 #include <TOOLKIT/FILESYSTEM.H>
 #include <TOOLKIT/STRING.H>
 
-#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>

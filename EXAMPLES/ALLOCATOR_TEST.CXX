@@ -1,7 +1,6 @@
 #include <TOOLKIT/ALLOCATOR.H>
 #include <TOOLKIT/STRING.H>
 #include <TOOLKIT/CLI.H>
-#include <assert.h>
 
 int main()
 {

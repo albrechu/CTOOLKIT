@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ////////////////////////////////////////
 // VALUES                             //
 ////////////////////////////////////////
@@ -249,9 +253,22 @@ static inline int DfFlush(PPDEFERCONTEXT ptr, PDEFERCONTEXT end)
 #define DF_GET_MACRO(_0, _1, _2, _3, NAME, ...) NAME
 #define DF_CHOOSE(...) EXPAND(DF_GET_MACRO(__VA_ARGS__, DFP3_CAST, DFP2_CAST, DFP1_CAST, DFP0_CAST))
 
+#ifdef NDEBUG
+void CAssertFailed(const char *expression, const char *file, int line);
+#define CAssert(expression)
+#else
+void CAssertFailed(const char *expression, const char *file, int line);
+#define CAssert(expression) \
+    do { \
+        if (!(expression)) { \
+            CAssertFailed(#expression, __FILE__, __LINE__); \
+        } \
+    } while (0)
+#endif
+
 #define dfs(n) struct { PDEFERCONTEXT ptr; DEFERCONTEXT items[n]; } _deferred = { &_deferred.items[n] }
 #define df(fn, ...) do { \
-    assert(_deferred.ptr > _deferred.items and "defer buffer overflowed!"); \
+    CAssert(_deferred.ptr > _deferred.items and "Defer stack overflowed!"); \
     --_deferred.ptr; \
     DF_CHOOSE(fn, __VA_ARGS__)(_deferred.ptr, fn, __VA_ARGS__); \
 } while(0)
@@ -259,7 +276,7 @@ static inline int DfFlush(PPDEFERCONTEXT ptr, PDEFERCONTEXT end)
 
 #define errdfs(n) struct { PDEFERCONTEXT ptr; DEFERCONTEXT items[n]; } _errdeferred = { &_errdeferred.items[n] }
 #define errdf(fn, ...) do { \
-    assert(_errdeferred.ptr > _errdeferred.items and "defer buffer overflowed!"); \
+    CAssert(_errdeferred.ptr > _errdeferred.items and "Defer stack overflowed!"); \
     --_errdeferred.ptr; \
     DF_CHOOSE(fn, __VA_ARGS__)(_errdeferred.ptr, fn, __VA_ARGS__); \
 } while(0)
@@ -276,4 +293,8 @@ static inline int DfFlush(PPDEFERCONTEXT ptr, PDEFERCONTEXT end)
 #else
     [[noreturn]] inline void unreachable_impl() {} // Raise undefined behavior by noreturn.
     #define unreachable() (unreachable_impl())
+#endif
+
+#ifdef __cplusplus
+}
 #endif

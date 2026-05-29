@@ -1,7 +1,6 @@
 #include <TOOLKIT/COMPRESSION.H>
 #include <TOOLKIT/ALLOCATOR.H>
 #include <string.h>
-#include <assert.h>
 
 // Hash 64 bit
 #define XXH_PRIME64_1 0x9E3779B185EBCA87ull
@@ -666,7 +665,7 @@ static inline I32 Log2_32(U32 n)
 }
 FDATA RAnsEncode(ALLOCATOR allocator, FDATA uncompressed, U8 scaling_bits)
 {
-    assert(not fdatainvalid(uncompressed) and "Uncompressed data needs to be valid.");
+    CAssert(not fdatainvalid(uncompressed) and "Uncompressed data needs to be valid.");
 
     U32 scale_bits = scaling_bits;
     // Prepare frequency table
@@ -822,7 +821,7 @@ FDATA RAnsDecode(ALLOCATOR allocator, FDATA compressed)
 {
     const PCOMPRESSEDRANS compressed_rans = (const PCOMPRESSEDRANS)compressed.data;
     U32 strategy = compressed_rans->decoding_strategy;
-    assert(strategy < DECODESTRATEGY_COUNT and "Decoding strategy is invalid.");
+    CAssert(strategy < DECODESTRATEGY_COUNT and "Decoding strategy is invalid.");
 
     const U32  scale_bits = compressed_rans->scale_bits;
     const U32  scaling    = 1 << scale_bits;

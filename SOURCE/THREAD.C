@@ -1,5 +1,4 @@
 #include <TOOLKIT/THREAD.H>
-#include <assert.h>
 
 #ifdef _WIN32
     #define WIN32_LEAN_AND_MEAN
@@ -494,7 +493,7 @@ BOOL JobPoolDispatch(PJOBPOOL job_pool, PCOUNTLATCH latch, JOBROUTINE fn, PVOID 
 }
 U64 JobPoolDispatchN(PJOBPOOL job_pool, PCOUNTLATCH latch, U64 work_count, U64 batch_size, JOBROUTINE fn, PVOID data)
 {
-    assert(batch_size > 0 and "You are trying to dispatch a batch size of 0.");
+   CAssert(batch_size > 0 and "You are trying to dispatch a batch size of 0.");
     
     U64 j = 0;
     for (U64 i = 0; i < work_count; i += batch_size)

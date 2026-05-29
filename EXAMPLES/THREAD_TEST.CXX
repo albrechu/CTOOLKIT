@@ -1,5 +1,4 @@
 #include <TOOLKIT/THREAD.H>
-#include <assert.h>
 #include <TOOLKIT/CLI.H>
 
 int main()

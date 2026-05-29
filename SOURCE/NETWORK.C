@@ -1,7 +1,5 @@
 #include <TOOLKIT/NETWORK.H>
 
-#include <assert.h>
-
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -117,7 +115,7 @@ FDATA SocketReceive(SOCKET socket, FDATA buffer)
 }
 U64 SocketSendTo(SOCKET socket, IPV4 ip, PORT port, FDATA data)
 {
-    assert(SocketIsOpen(socket));
+    CAssert(SocketIsOpen(socket) and "Socket has to be open to send anything.");
 
     struct sockaddr_in addr = { 0 };
     addr.sin_family = AF_INET;
@@ -134,7 +132,7 @@ U64 SocketSendTo(SOCKET socket, IPV4 ip, PORT port, FDATA data)
 }
 FDATA SocketReceiveFrom(SOCKET socket, IPV4 ip_out, FDATA buffer, PPORT port)
 {
-    assert(SocketIsOpen(socket));
+    CAssert(SocketIsOpen(socket) and "Socket has to be open to receive anything.");
 
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
