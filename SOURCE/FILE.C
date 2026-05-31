@@ -15,7 +15,7 @@ RESULT ErrnoAsResult(errno_t err)
 	{
 	case 0:      return OK;
 	case EACCES: return ACCESS_DENIED;
-	case ENOMEM: return OUT_OF_MEMORY;
+	case ENOMEM: return OUT_OF_HOST_MEMORY;
 	case EBUSY:  return BUSY;
 	default:     return UNDEFINED_ERROR;
 	}
@@ -39,7 +39,7 @@ RESULT BeginFile(PALLOCATOR allocator, SV path, FILEMODE mode, U64 initial_capac
 	if (initial_capacity)
 	{
 		if (not (file->Buffer.String = Alloc(allocator, initial_capacity, sizeof(U8))))
-			return OUT_OF_MEMORY;
+			return OUT_OF_HOST_MEMORY;
 		file->Buffer.Size = 0;
 		file->BufferCapacity = initial_capacity;
 	}
@@ -213,7 +213,7 @@ RESULT FileEnsureCapacity(PFILEDATA file, U64 capacity)
 	{
 		PCHAR str = (PCHAR)Realloc(&file->Allocator, file->Buffer.String, capacity, 1);
 		if (not str)
-			return OUT_OF_MEMORY;
+			return OUT_OF_HOST_MEMORY;
 		
 		file->Buffer.String = str;
 		file->BufferCapacity = capacity;
@@ -976,7 +976,7 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 	}
 	else
 	{
-		return OUT_OF_MEMORY;
+		return OUT_OF_HOST_MEMORY;
 	}
 	return OK;
 }

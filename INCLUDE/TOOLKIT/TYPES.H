@@ -52,22 +52,36 @@ typedef struct DV
 
 typedef enum RESULT
 {
-	UNDEFINED_ERROR      = -11,
-	INVALID_PARAMETER    = -10,
-	INVALID_FORMAT       = -9,
-	INVALID_OPERATION    = -8,
-	NOT_READY            = -7,
-	OUT_OF_DEVICE_MEMORY = -6,
-	OUT_OF_MEMORY        = -5,
-	TIMEOUT              = -4,
-	ACCESS_DENIED        = -3,
-	DOES_NOT_EXIST       = -2,
-	BUSY                 = -1,
-	OK                   = 0,
-	END_OF_FILE          = 1,
-	IO_PENDING           = 2,
-	UNDEFINED_NONERROR   = 3,
+    RESULT_MIN           = -14,
+
+    // Error Codes 
+    UNSUPPORTED          = -14,
+    ALREADY_EXISTS       = -13,
+    CORRUPTED            = -12,
+    UNDEFINED_ERROR      = -11,
+    INVALID_PARAMETER    = -10,
+    INVALID_FORMAT       = -9,
+    INVALID_OPERATION    = -8,
+    NOT_READY            = -7,
+    OUT_OF_DEVICE_MEMORY = -6,
+    OUT_OF_HOST_MEMORY   = -5,
+    TIMEOUT              = -4,
+    ACCESS_DENIED        = -3,
+    DOES_NOT_EXIST       = -2,
+    BUSY                 = -1,
+
+    // Success
+    OK                   = 0,
+    END_OF_FILE          = 1,
+    IO_PENDING           = 2,
+    UNDEFINED_NONERROR   = 3,
+
+    RESULT_MAX = 3,
 } RESULT;
+
+#define IS_SUCCESS(rc) ((rc) >= 0)
+#define IS_OK(rc)      ((rc) == OK)
+#define IS_FAILURE(rc) ((rc) < 0)
 
 makeopaque(POOL);
 makeopaque(ARENA);
