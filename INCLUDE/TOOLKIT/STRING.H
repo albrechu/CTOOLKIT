@@ -14,6 +14,7 @@ I64  SVChr(SV s, CHAR c);
 SV   SVFind(SV haystack, SV needle);
 SV   SVFindNoCase(SV haystack, SV needle);
 SV   SVStrdup(PALLOCATOR allocator, SV string);
+SV   SVStrdupTerminated(PALLOCATOR allocator, SV string);
 SV   SVJoinList(PALLOCATOR allocator, CHAR separator, U32 strings_count, PSV strings);
 SV   SVJoin(PALLOCATOR allocator, U32 strings_count, PSV strings);
 

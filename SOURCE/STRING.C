@@ -70,6 +70,16 @@ SV SVStrdup(PALLOCATOR allocator, SV string)
    memcpy(r.String, string.String, string.Size);
    return r;
 }
+SV SVStrdupTerminated(PALLOCATOR allocator, SV string)
+{
+   SV r = string;
+   if (not allocator) allocator = DefaultAllocator();
+   r.String = (PCHAR)Alloc(allocator, sizeof(CHAR) * (string.Size + 1), alignof(CHAR));
+   if (not r.String) return SV_INVALID;
+   memcpy(r.String, string.String, string.Size);
+   r.String[string.Size] = '\0';
+   return r;
+}
 SV SVJoinList(PALLOCATOR allocator, CHAR separator, U32 strings_count, PSV strings)
 {
    U64 size = strings_count; // For separators and null terminator
