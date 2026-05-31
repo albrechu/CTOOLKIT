@@ -22,10 +22,10 @@ VOID   FreeSocket(SOCKET socket);
 I64    SocketConnect(SOCKET socket, IPV4 ip, PORT port);
 I64    SocketListen(SOCKET socket, PORT port, I32 backlog);
 SOCKET SocketAccept(SOCKET server);
-U64    SocketSend(SOCKET socket, FDATA data);
-FDATA  SocketReceive(SOCKET socket, FDATA buffer);
-U64    SocketSendTo(SOCKET socket, IPV4 ip, PORT port, FDATA data);
-FDATA  SocketReceiveFrom(SOCKET socket, IPV4 ip_out, FDATA buffer, PPORT port);
+U64    SocketSend(SOCKET socket, DV data);
+DV  SocketReceive(SOCKET socket, DV buffer);
+U64    SocketSendTo(SOCKET socket, IPV4 ip, PORT port, DV data);
+DV  SocketReceiveFrom(SOCKET socket, IPV4 ip_out, DV buffer, PPORT port);
 I64    SocketBlock(SOCKET socket, BOOL blocking);
 BOOL   SocketIsOpen(SOCKET socket);
 

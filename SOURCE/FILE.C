@@ -21,13 +21,14 @@ RESULT ErrnoAsResult(errno_t err)
 	}
 }
 
-RESULT BeginFile(ALLOCATOR allocator, FSTR path, FILEMODE mode, U64 initial_capacity, PFILEDATA file)
+RESULT BeginFile(PALLOCATOR allocator, SV path, FILEMODE mode, U64 initial_capacity, PFILEDATA file)
 {
 	memzero(file);
-	file->Allocator = allocator;
+    if (not allocator) allocator = DefaultAllocator();
+	file->Allocator = *allocator;
 	if (mode != FILEMODE_NONE)
 	{
-		if (fstrinvalid(path))
+		if (svinvalid(path))
 			return UNDEFINED_ERROR;
 
 		RESULT result = FileOpen(path, mode, file);
@@ -37,23 +38,23 @@ RESULT BeginFile(ALLOCATOR allocator, FSTR path, FILEMODE mode, U64 initial_capa
 
 	if (initial_capacity)
 	{
-		if (not (file->Buffer.str = Alloc(&allocator, initial_capacity, sizeof(U8))))
+		if (not (file->Buffer.String = Alloc(allocator, initial_capacity, sizeof(U8))))
 			return OUT_OF_MEMORY;
-		file->Buffer.size = 0;
+		file->Buffer.Size = 0;
 		file->BufferCapacity = initial_capacity;
 	}
 	return OK;
 }
-RESULT FileOpen(FSTR path, FILEMODE mode, PFILEDATA file)
+RESULT FileOpen(SV path, FILEMODE mode, PFILEDATA file)
 {
-	CAssert(not fstrinvalid(path) and "Path string view needs to be valid.");
+	CAssert(not svinvalid(path) and "Path string view needs to be valid.");
 	if (file->File)
 	{
 		FileClose(file);
 	}
-	memcpy(file->Path, path.str, path.size);
-	file->PathView = fstr(file->Path, path.size);
-	file->Path[path.size] = '\0';
+	memcpy(file->Path, path.String, path.Size);
+	file->PathView = sv(file->Path, path.Size);
+	file->Path[path.Size] = '\0';
 	file->Mode = mode;
 
 	CSTR file_mode = null;
@@ -126,7 +127,7 @@ RESULT FileReopen(PFILEDATA file, FILEMODE mode)
 	file->Mode = mode;
 	return OK;
 }
-RESULT FileWriteAll(PFILEDATA file, BOOL as_text, FSTR content)
+RESULT FileWriteAll(PFILEDATA file, BOOL as_text, SV content)
 {
 	CAssert(file->File != null and "File must be open to write to.");
 	RESULT rc;
@@ -142,25 +143,25 @@ RESULT FileWriteAll(PFILEDATA file, BOOL as_text, FSTR content)
 	}
 	rewind((FILE *)file->File);
 	file->Offset = 0;
-	U64 written = fwrite(content.str, sizeof(CHAR), content.size, (FILE *)file->File);
-	if (written != content.size)
+	U64 written = fwrite(content.String, sizeof(CHAR), content.Size, (FILE *)file->File);
+	if (written != content.Size)
 	{
 		errno_t err = ferror((FILE *)file->File);
 		return ErrnoAsResult(err);
 	}
 	// Sync internal state
-	file->Offset   = content.size;
-	file->FileSize = content.size; // Update known file size
+	file->Offset   = content.Size;
+	file->FileSize = content.Size; // Update known file size
 	return OK;
 }
-RESULT FileRead(PFILEDATA file, U64 count, PFSTR content)
+RESULT FileRead(PFILEDATA file, U64 count, PSV content)
 {
 	CAssert(file->File != null and "File must be open to read from.");
 	RESULT rc;
 	if ((rc = FileEnsureCapacity(file, count)))
 		return rc;
 
-	U64 read_count = fread(file->Buffer.str, sizeof(CHAR), count, (FILE *)file->File);
+	U64 read_count = fread(file->Buffer.String, sizeof(CHAR), count, (FILE *)file->File);
 	if (read_count < count) // Less bytes read than wanted;
 	{
 		if (!feof((FILE *)file->File)) 
@@ -170,12 +171,12 @@ RESULT FileRead(PFILEDATA file, U64 count, PFSTR content)
 		}
 		return END_OF_FILE;
 	}
-	file->Buffer.size = read_count;
+	file->Buffer.Size = read_count;
 	file->Offset += read_count;
 	*content = file->Buffer;
 	return OK;
 }
-RESULT FileReadAll(PFILEDATA file, BOOL as_text, PFSTR content)
+RESULT FileReadAll(PFILEDATA file, BOOL as_text, PSV content)
 {
 	CAssert(file->File != null and "File must be open to read from.");
 	RESULT rc;
@@ -194,14 +195,14 @@ RESULT FileReadAll(PFILEDATA file, BOOL as_text, PFSTR content)
 
 	rewind((FILE *)file->File);
 
-	U64 read_count = fread(file->Buffer.str, sizeof(CHAR), file->FileSize, (FILE *)file->File);
+	U64 read_count = fread(file->Buffer.String, sizeof(CHAR), file->FileSize, (FILE *)file->File);
 	if (read_count < file->FileSize and !feof((FILE *)file->File)) // Account for mode = "r" 
 	{
 		if (ferror((FILE *)file->File))
 			return ErrnoAsResult(ferror((FILE *)file->File));
 	}
 
-	file->Buffer.size = read_count;
+	file->Buffer.Size = read_count;
 	file->Offset      = read_count;
 	*content          = file->Buffer;
 	return OK;
@@ -210,11 +211,11 @@ RESULT FileEnsureCapacity(PFILEDATA file, U64 capacity)
 {
 	if (capacity > file->BufferCapacity)
 	{
-		PCHAR str = (PCHAR)Realloc(&file->Allocator, file->Buffer.str, capacity, 1);
+		PCHAR str = (PCHAR)Realloc(&file->Allocator, file->Buffer.String, capacity, 1);
 		if (not str)
 			return OUT_OF_MEMORY;
 		
-		file->Buffer.str = str;
+		file->Buffer.String = str;
 		file->BufferCapacity = capacity;
 	}
 	return OK;
@@ -232,12 +233,12 @@ static RESULT FileReReadBuffered(PFILEDATA file, PCHAR buffer, U64 buffer_size, 
 		}
 		return rc;
 	}
-	file->Buffer.size = relative_offset;
+	file->Buffer.Size = relative_offset;
 	// Copy
 	if (relative_offset <= buffer_size) // Don't need to reread 
 	{
 		buffer[found_end - 1] = terminator_replacement; // Apply replacement
-		memcpy(file->Buffer.str, buffer, relative_offset);
+		memcpy(file->Buffer.String, buffer, relative_offset);
 
 		file->Offset += relative_offset;
 		if (fseek((FILE *)file->File, (long)file->Offset, SEEK_SET))
@@ -255,12 +256,12 @@ static RESULT FileReReadBuffered(PFILEDATA file, PCHAR buffer, U64 buffer_size, 
 		}
 		else
 		{
-			U64 read2 = fread(file->Buffer.str, sizeof(CHAR), relative_offset, (FILE *)file->File);
+			U64 read2 = fread(file->Buffer.String, sizeof(CHAR), relative_offset, (FILE *)file->File);
 			if (read2 == relative_offset) // OK
 			{
 				if (relative_offset > 0) // Apply replacement
 				{
-					file->Buffer.str[relative_offset - 1] = terminator_replacement;
+					file->Buffer.String[relative_offset - 1] = terminator_replacement;
 				}
 				file->Offset += relative_offset;
 			}
@@ -278,7 +279,7 @@ static RESULT FileReReadBuffered(PFILEDATA file, PCHAR buffer, U64 buffer_size, 
 	}
 	return rc;
 }
-RESULT FileWrite(PFILEDATA file, FSTR content, BOOL as_text)
+RESULT FileWrite(PFILEDATA file, SV content, BOOL as_text)
 {
 	CAssert(file->File != null and "File must be open to write to.");
 	RESULT rc;
@@ -292,14 +293,14 @@ RESULT FileWrite(PFILEDATA file, FSTR content, BOOL as_text)
 		if (file->Mode != FILEMODE_READ and (rc = FileReopen(file, FILEMODE_WRITE)))
 			return rc;
 	}
-	U64 written = fwrite(content.str, sizeof(*content.str), content.size, (FILE *)file->File);
-	if (written != content.size)
+	U64 written = fwrite(content.String, sizeof(*content.String), content.Size, (FILE *)file->File);
+	if (written != content.Size)
 	{
 		return UNDEFINED_ERROR;
 	}
 	return OK;
 }
-RESULT FileReadLine(PFILEDATA file, CHAR terminator, CHAR terminator_replacement, BOOL as_text, PFSTR content)
+RESULT FileReadLine(PFILEDATA file, CHAR terminator, CHAR terminator_replacement, BOOL as_text, PSV content)
 {
 	CAssert(file->File != null and "File must be open to read from.");
 	RESULT rc;
@@ -325,6 +326,7 @@ RESULT FileReadLine(PFILEDATA file, CHAR terminator, CHAR terminator_replacement
 			if (eol) // End of line reached, copy.
 			{
 				rc = FileReReadBuffered(file, buffer, sizeof(buffer), terminator_replacement, ((U64)(eol - buffer)) + 1, relative_offset);
+			    file->CurrentLine = file->Buffer;
 				*content = file->Buffer;
 				return rc;
 			}
@@ -346,7 +348,7 @@ VOID FileRewind(PFILEDATA file)
 }
 RESULT FileClose(PFILEDATA file)
 {
-	file->PathView = FSTR_INVALID;
+	file->PathView = SV_INVALID;
 	if (fclose((FILE *)file->File))
 	{
 		errno_t err = ferror((FILE *)file->File);
@@ -362,8 +364,8 @@ VOID EndFile(PFILEDATA file)
 {
 	if (file->File)
 		FileClose(file);
-	if (file->Buffer.str)
-		Free(&file->Allocator, file->Buffer.str);
+	if (file->Buffer.String)
+		Free(&file->Allocator, file->Buffer.String);
 	memzero(file);
 }
 
@@ -371,30 +373,30 @@ VOID EndFile(PFILEDATA file)
 // INI FILE                            /
 // / / / / / / / / / / / / / / / / / / /
 //// WRITING ///////////////////////////
-VOID IniGroup(PFILEDATA filedata, FSTR group)
+VOID IniGroup(PFILEDATA filedata, SV group)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	fprintf((FILE *)filedata->File, "[%.*s]\n", (int)group.size, group.str);
+	fprintf((FILE *)filedata->File, "[%.*s]\n", (int)group.Size, group.String);
 }
-VOID IniInteger(PFILEDATA filedata, FSTR key, I32 value)
+VOID IniInteger(PFILEDATA filedata, SV key, I32 value)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	fprintf((FILE *)filedata->File, "%.*s = %d\n", (int)key.size, key.str, (int)value);
+	fprintf((FILE *)filedata->File, "%.*s = %d\n", (int)key.Size, key.String, (int)value);
 }
-VOID IniFloat(PFILEDATA filedata, FSTR key, F32 value)
+VOID IniFloat(PFILEDATA filedata, SV key, F32 value)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	fprintf((FILE *)filedata->File, "%.*s = %g\n", (int)key.size, key.str, value); // auto-precision
+	fprintf((FILE *)filedata->File, "%.*s = %g\n", (int)key.Size, key.String, value); // auto-precision
 }
-VOID IniBool(PFILEDATA filedata, FSTR key, bool value)
+VOID IniBool(PFILEDATA filedata, SV key, bool value)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	fprintf((FILE *)filedata->File, "%.*s = %.*s\n", (int)key.size, key.str, value ? 4 : 5, value ? "true" : "false");
+	fprintf((FILE *)filedata->File, "%.*s = %.*s\n", (int)key.Size, key.String, value ? 4 : 5, value ? "true" : "false");
 }
-VOID IniString(PFILEDATA filedata, FSTR key, FSTR value)
+VOID IniString(PFILEDATA filedata, SV key, SV value)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	fprintf((FILE *)filedata->File, "%.*s = %.*s\n", (int)key.size, key.str, (int)value.size, value.str);
+	fprintf((FILE *)filedata->File, "%.*s = %.*s\n", (int)key.Size, key.String, (int)value.Size, value.String);
 }
 //// READING ///////////////////////////
 static PCHAR Trim(PCHAR str)
@@ -409,11 +411,11 @@ static PCHAR Trim(PCHAR str)
 RESULT IniReadNextEntry(PFILEDATA filedata, PINIENTRY entry)
 {
 	CAssert(filedata->Mode == FILEMODE_READTEXT and "Not in read text mode.");
-	FSTR line;
+	SV line;
 	RESULT rc;
 	while ((rc = FileReadLine(filedata, '\n', '\0', true, &line)) == OK)
 	{
-		PCHAR current = Trim(line.str);
+		PCHAR current = Trim(line.String);
 		if (*current == '\0' or *current == ';' or *current == '#') continue; // Empty/Comment
 
 		if (*current == '[') // [GroupName]
@@ -484,11 +486,11 @@ VOID JsonEnd(PFILEDATA filedata)
 	filedata->Json.Depth--;
 	fprintf((FILE *)filedata->File, "}\n");
 }
-VOID JsonObjectBegin(PFILEDATA filedata, FSTR key)
+VOID JsonObjectBegin(PFILEDATA filedata, SV key)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	if (key.size > 0)
-		fprintf((FILE *)filedata->File, "%*s\"%.*s\": {\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str);
+	if (key.Size > 0)
+		fprintf((FILE *)filedata->File, "%*s\"%.*s\": {\n", 3 * filedata->Json.Depth, "", (int)key.Size, key.String);
 	else
 		fprintf((FILE *)filedata->File, "%*s{\n", 3 * filedata->Json.Depth, "");
 	filedata->Json.Depth++;
@@ -499,11 +501,11 @@ VOID JsonObjectEnd(PFILEDATA filedata)
 	filedata->Json.Depth--;
 	fprintf((FILE *)filedata->File, "%*s},\n", 3 * filedata->Json.Depth, "");
 }
-VOID JsonArrayBegin(PFILEDATA filedata, FSTR key)
+VOID JsonArrayBegin(PFILEDATA filedata, SV key)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	if (key.size > 0)
-		fprintf((FILE *)filedata->File, "%*s\"%.*s\": [\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str);
+	if (key.Size > 0)
+		fprintf((FILE *)filedata->File, "%*s\"%.*s\": [\n", 3 * filedata->Json.Depth, "", (int)key.Size, key.String);
 	else
 		fprintf((FILE *)filedata->File, "%*s[\n", 3 * filedata->Json.Depth, "");
 	filedata->Json.Depth++;
@@ -514,53 +516,53 @@ VOID JsonArrayEnd(PFILEDATA filedata)
 	filedata->Json.Depth--;
 	fprintf((FILE *)filedata->File, "%*s],\n", 3 * filedata->Json.Depth, "");
 }
-VOID JsonInteger(PFILEDATA filedata, FSTR key, I32 value)
+VOID JsonInteger(PFILEDATA filedata, SV key, I32 value)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	if (key.size > 0)
-		fprintf((FILE *)filedata->File, "%*s\"%.*s\": %d,\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str, (int)value);
+	if (key.Size > 0)
+		fprintf((FILE *)filedata->File, "%*s\"%.*s\": %d,\n", 3 * filedata->Json.Depth, "", (int)key.Size, key.String, (int)value);
 	else
 		fprintf((FILE *)filedata->File, "%*s%d,\n", 3 * filedata->Json.Depth, "", (int)value);
 }
-VOID JsonFloat(PFILEDATA filedata, FSTR key, F32 value)
+VOID JsonFloat(PFILEDATA filedata, SV key, F32 value)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	if (key.size > 0)
-		fprintf((FILE *)filedata->File, "%*s\"%.*s\": %g,\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str, value);
+	if (key.Size > 0)
+		fprintf((FILE *)filedata->File, "%*s\"%.*s\": %g,\n", 3 * filedata->Json.Depth, "", (int)key.Size, key.String, value);
 	else
 		fprintf((FILE *)filedata->File, "%*s%g,\n", 3 * filedata->Json.Depth, "", value);
 }
-VOID JsonBool(PFILEDATA filedata, FSTR key, BOOL value)
+VOID JsonBool(PFILEDATA filedata, SV key, BOOL value)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	if (key.size > 0)
-		fprintf((FILE *)filedata->File, "%*s\"%.*s\": %.*s,\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str, value ? 4 : 5, value ? "true" : "false");
+	if (key.Size > 0)
+		fprintf((FILE *)filedata->File, "%*s\"%.*s\": %.*s,\n", 3 * filedata->Json.Depth, "", (int)key.Size, key.String, value ? 4 : 5, value ? "true" : "false");
 	else
 		fprintf((FILE *)filedata->File, "%*s%.*s,\n", 3 * filedata->Json.Depth, "", value ? 4 : 5, value ? "true" : "false");
 }
-VOID JsonString(PFILEDATA filedata, FSTR key, FSTR value)
+VOID JsonString(PFILEDATA filedata, SV key, SV value)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	if (key.size > 0)
-		fprintf((FILE *)filedata->File, "%*s\"%.*s\": \"%.*s\",\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str, (int)value.size, value.str);
+	if (key.Size > 0)
+		fprintf((FILE *)filedata->File, "%*s\"%.*s\": \"%.*s\",\n", 3 * filedata->Json.Depth, "", (int)key.Size, key.String, (int)value.Size, value.String);
 	else
-		fprintf((FILE *)filedata->File, "%*s\"%.*s\",\n", 3 * filedata->Json.Depth, "", (int)value.size, value.str);
+		fprintf((FILE *)filedata->File, "%*s\"%.*s\",\n", 3 * filedata->Json.Depth, "", (int)value.Size, value.String);
 }
-VOID JsonNull(PFILEDATA filedata, FSTR key)
+VOID JsonNull(PFILEDATA filedata, SV key)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITETEXT and "Not in write text mode.");
-	if (key.size > 0)
-		fprintf((FILE *)filedata->File, "%*s\"%.*s\": null,\n", 3 * filedata->Json.Depth, "", (int)key.size, key.str);
+	if (key.Size > 0)
+		fprintf((FILE *)filedata->File, "%*s\"%.*s\": null,\n", 3 * filedata->Json.Depth, "", (int)key.Size, key.String);
 	else
 		fprintf((FILE *)filedata->File, "%*snull,\n", 3 * filedata->Json.Depth, "");
 }
 
 //// READING ///////////////////////////
-static CHAR JsonSkipWhitespace(FSTR *line, U64 *offset)
+static CHAR JsonSkipWhitespace(SV line, U64 *offset)
 {
-	while (*offset < line->size)
+	while (*offset < line.Size)
 	{
-		CHAR c = line->str[*offset];
+		CHAR c = line.String[*offset];
 		if (c > ' ' and c != ',')
 			return c;
 		if (c != ' ' and c != '\t' and c != ',' and c != ':')
@@ -569,21 +571,21 @@ static CHAR JsonSkipWhitespace(FSTR *line, U64 *offset)
 	}
 	return '\0';
 }
-static U64 JsonParseString(FSTR *line, U64 *offset, PCHAR out_buf, U64 max_size)
+static U64 JsonParseString(SV line, U64 *offset, PCHAR out_buf, U64 max_size)
 {
 	U64 len = 0;
 	(*offset)++; // Skip opening double quote '"'
 
-	while (*offset < line->size and len < max_size - 1)
+	while (*offset < line.Size and len < max_size - 1)
 	{
-		CHAR c = line->str[(*offset)++];
+		CHAR c = line.String[(*offset)++];
 		if (c == '"') // Closing quote
 			break;
 
 		if (c == '\\') // Fast escape bypass
 		{
-			if (*offset < line->size)
-				c = line->str[(*offset)++];
+			if (*offset < line.Size)
+				c = line.String[(*offset)++];
 		}
 		out_buf[len++] = c;
 	}
@@ -592,24 +594,23 @@ static U64 JsonParseString(FSTR *line, U64 *offset, PCHAR out_buf, U64 max_size)
 }
 VOID JsonReadReset(PFILEDATA filedata)
 {
-	filedata->Json.Depth = 0;
+	filedata->Json.Depth          = 0;
 	filedata->Json.HasExplicitKey = false;
-	filedata->Json.LineOffset = 0;
-	filedata->Json.CurrentLine = LIT(FSTR, 0);
+	filedata->Json.LineOffset     = 0;
+	filedata->CurrentLine         = SV_INVALID;
 }
 RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 {
 	CAssert((filedata->Mode == FILEMODE_READTEXT || filedata->Mode == FILEMODE_READ) and "Not in valid read mode.");
 	CAssert(filedata and entry and "Parameters need to be valid.");
 
-	FSTR *line  = &filedata->Json.CurrentLine;
 	U64 *offset = &filedata->Json.LineOffset;
 	while (true)
 	{
 		// If we've consumed the current line, read next one
-		if (*offset >= line->size)
+		if (*offset >= filedata->CurrentLine.Size)
 		{
-			RESULT res = FileReadLine(filedata, '\n', '\0', true, line);
+			RESULT res = FileReadLine(filedata, '\n', '\0', true, &filedata->CurrentLine);
 			if (res != OK) // E.g. error or  eof
 			{
 				JsonReadReset(filedata); // Reset state for potential future reads
@@ -618,10 +619,10 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 			*offset = 0;
 		}
 
-		CHAR token = JsonSkipWhitespace(line, offset);
+		CHAR token = JsonSkipWhitespace(filedata->CurrentLine, offset);
 		if (token == '\0')
 		{
-			*offset = line->size; // Force read next line
+			*offset = filedata->CurrentLine.Size; // Force read next line
 			continue;
 		}
 
@@ -655,18 +656,18 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 		if (token == '"')
 		{
 			U64 search_ptr = *offset + 1;
-			while (search_ptr < line->size and line->str[search_ptr] != '"')
+			while (search_ptr < filedata->CurrentLine.Size and filedata->CurrentLine.String[search_ptr] != '"')
 			{
-				if (line->str[search_ptr] == '\\') search_ptr++;
+				if (filedata->CurrentLine.String[search_ptr] == '\\') search_ptr++;
 				search_ptr++;
 			}
 			search_ptr++;
 
-			while (search_ptr < line->size and (line->str[search_ptr] == ' ' or line->str[search_ptr] == '\t'))
+			while (search_ptr < filedata->CurrentLine.Size and (filedata->CurrentLine.String[search_ptr] == ' ' or filedata->CurrentLine.String[search_ptr] == '\t'))
 			{
 				search_ptr++;
 			}
-			if (search_ptr < line->size and line->str[search_ptr] == ':')
+			if (search_ptr < filedata->CurrentLine.Size and filedata->CurrentLine.String[search_ptr] == ':')
 				isKeyValuePair = true;
 		}
 
@@ -674,20 +675,20 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 		if (isKeyValuePair)
 		{
 			// Read Key
-			entry->Key.Length = JsonParseString(line, offset, entry->Key.Name, sizeof(entry->Key.Name));
-			entry->Key.Hash = HashFNV1a(fdata(entry->Key.Name, entry->Key.Length));
+			entry->Key.Length = JsonParseString(filedata->CurrentLine, offset, entry->Key.Name, sizeof(entry->Key.Name));
+			entry->Key.Hash = HashFNV1a(dv(entry->Key.Name, entry->Key.Length));
 
 			// ':' after key
-			token = JsonSkipWhitespace(line, offset);
+			token = JsonSkipWhitespace(filedata->CurrentLine, offset);
 			if (token != ':')  
 				return INVALID_FORMAT;
 			(*offset)++; // step over ':'
 
 			// If next is '\0', read next line
-			token = JsonSkipWhitespace(line, offset);
+			token = JsonSkipWhitespace(filedata->CurrentLine, offset);
 			if (token == '\0')
 			{
-				*offset = line->size; // Force read next line
+				*offset = filedata->CurrentLine.Size; // Force read next line
 				filedata->Json.HasExplicitKey = true; // Remember we parsed a key
 				continue; // Go back to top, will read new line and re-process
 			}
@@ -726,8 +727,8 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 		if (token == '"')
 		{
 			entry->ValueType = VALUETYPE_STRING;
-			entry->Value.String.Length = JsonParseString(line, offset, entry->Value.String.Name, sizeof(entry->Value.String.Name));
-			entry->Value.String.Hash = HashFNV1a(fdata(entry->Value.String.Name, entry->Value.String.Length));
+			entry->Value.String.Length = JsonParseString(filedata->CurrentLine, offset, entry->Value.String.Name, sizeof(entry->Value.String.Name));
+			entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, entry->Value.String.Length));
 			return OK;
 		}
 		else if (token == '{' or token == '[')
@@ -738,9 +739,9 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 		// Parse literals/numbers
 		CHAR value_segment[256] = { 0 };
 		U64 v_len = 0;
-		while (*offset < line->size and v_len < sizeof(value_segment) - 1)
+		while (*offset < filedata->CurrentLine.Size and v_len < sizeof(value_segment) - 1)
 		{
-			CHAR c = line->str[*offset];
+			CHAR c = filedata->CurrentLine.String[*offset];
 			if (c == ' ' or c == '\t' or c == ',' or c == '}' or c == ']' or c == ':')
 				break;
 			value_segment[v_len++] = c;
@@ -787,8 +788,8 @@ VOID CsvBegin(PFILEDATA filedata)
 VOID CsvEnd(PFILEDATA filedata)
 {
 	filedata->Csv.HasWrittenFirstValue = false;
-	filedata->Csv.CurrentLine = LIT(FSTR, 0);
 	filedata->Csv.LineOffset = 0;
+	filedata->CurrentLine = SV_INVALID;
 }
 VOID CsvRow(PFILEDATA filedata)
 {
@@ -811,9 +812,9 @@ VOID CsvBool(PFILEDATA filedata, BOOL value)
 	fprintf((FILE *)filedata->File, filedata->Csv.HasWrittenFirstValue ? ",%.*s" : "%.*s", value ? 4 : 5, value ? "true" : "false");
 	filedata->Csv.HasWrittenFirstValue = true;
 }
-VOID CsvString(PFILEDATA filedata, FSTR value)
+VOID CsvString(PFILEDATA filedata, SV value)
 {
-	fprintf((FILE *)filedata->File, filedata->Csv.HasWrittenFirstValue ? ",%.*s" : "%.*s", (int)value.size, value.str);
+	fprintf((FILE *)filedata->File, filedata->Csv.HasWrittenFirstValue ? ",%.*s" : "%.*s", (int)value.Size, value.String);
 	filedata->Csv.HasWrittenFirstValue = true;
 }
 //// READING ///////////////////////////
@@ -822,23 +823,22 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 	CAssert((filedata->Mode == FILEMODE_READTEXT or filedata->Mode == FILEMODE_READ) and "Not in valid read mode.");
 	if (!filedata or !entry) return INVALID_PARAMETER;
 
-	FSTR *line = &filedata->Csv.CurrentLine;
 	U64  *offset = &filedata->Csv.LineOffset;
-	if (*offset >= line->size) // Need to read next line
+	if (*offset >= filedata->CurrentLine.Size) // Need to read next line
 	{
-		RESULT res = FileReadLine(filedata, '\n', '\0', true, line);
+		RESULT res = FileReadLine(filedata, '\n', '\0', true, &filedata->CurrentLine);
 		if (res == END_OF_FILE) return END_OF_FILE;
 		if (res != OK) return res;
 		*offset = 0;
 	}
 
-	if (*offset >= line->size) // End of line
+	if (*offset >= filedata->CurrentLine.Size) // EOF
 	{
 		entry->ValueType = VALUETYPE_ENDOFLINE;
 		return OK;
 	}
 
-	CHAR c = line->str[*offset];
+	CHAR c = filedata->CurrentLine.String[*offset];
 	U64 start = *offset;
 
 	if (c == '"') // Quoted value
@@ -846,13 +846,13 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 		(*offset)++; // Skip opening quote
 		U64 len = 0;
 
-		while (*offset < line->size and len < sizeof(entry->Value.String.Name) - 1)
+		while (*offset < filedata->CurrentLine.Size and len < sizeof(entry->Value.String.Name) - 1)
 		{
-			c = line->str[*offset];
+			c = filedata->CurrentLine.String[*offset];
 
 			if (c == '"') // Check for escaped quote ("")
 			{
-				if (*offset + 1 < line->size and line->str[*offset + 1] == '"')
+				if (*offset + 1 < filedata->CurrentLine.Size and filedata->CurrentLine.String[*offset + 1] == '"')
 				{
 					entry->Value.String.Name[len++] = '"';
 					*offset += 2;
@@ -873,27 +873,27 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 
 		entry->Value.String.Name[len] = '\0';
 		entry->Value.String.Length    = len;
-		entry->Value.String.Hash      = HashFNV1a(fdata(entry->Value.String.Name, len));
+		entry->Value.String.Hash      = HashFNV1a(dv(entry->Value.String.Name, len));
 		entry->ValueType              = VALUETYPE_STRING;
 
-		while (*offset < line->size and line->str[*offset] != ',') // Skip to next comma or EOL
+		while (*offset < filedata->CurrentLine.Size and filedata->CurrentLine.String[*offset] != ',') // Skip to next comma or EOL
 			(*offset)++;
 
-		if (*offset < line->size and line->str[*offset] == ',') // Skip comma
+		if (*offset < filedata->CurrentLine.Size and filedata->CurrentLine.String[*offset] == ',') // Skip comma
 			(*offset)++;
 		return OK;
 	} // else: Handle unquoted values till comma or EOL
 
 	U64 len = 0;
 	CHAR value_buf[256];
-	while (*offset < line->size and line->str[*offset] != ',') 
+	while (*offset < filedata->CurrentLine.Size and filedata->CurrentLine.String[*offset] != ',')
 	{
 		if (len < sizeof(value_buf) - 1)
-			value_buf[len++] = line->str[*offset];
+			value_buf[len++] = filedata->CurrentLine.String[*offset];
 		(*offset)++;
 	}
 
-	if (*offset < line->size and line->str[*offset] == ',')
+	if (*offset < filedata->CurrentLine.Size and filedata->CurrentLine.String[*offset] == ',')
 		(*offset)++; // Skip comma
 
 	value_buf[len] = '\0'; // Null-terminate for easier processing
@@ -971,7 +971,7 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 	{
 		memcpy(entry->Value.String.Name, value_buf, len + 1);
 		entry->Value.String.Length = len;
-		entry->Value.String.Hash   = HashFNV1a(fdata(value_buf, len));
+		entry->Value.String.Hash   = HashFNV1a(dv(value_buf, len));
 		entry->ValueType           = VALUETYPE_STRING;
 	}
 	else
@@ -1064,34 +1064,34 @@ VOID MsgPackFloat(PFILEDATA filedata, F32 value)
 	memcpy(&bits, &value, sizeof(F32));
 	fwrite(&bits, sizeof(bits), 1, (FILE *)filedata->File);
 }
-VOID MsgPackString(PFILEDATA filedata, FSTR value)
+VOID MsgPackString(PFILEDATA filedata, SV value)
 {
 	CAssert(filedata->Mode == FILEMODE_WRITE and "Not in write mode.");
-	if (value.size <= 31) // fixstr
+	if (value.Size <= 31) // fixstr
 	{
-		const U8 v = 0xa0 | (U8)value.size; 
+		const U8 v = 0xa0 | (U8)value.Size; 
 		fwrite(&v, sizeof(v), 1, (FILE *)filedata->File);
 	}
-	else if (value.size <= 255) // str8
+	else if (value.Size <= 255) // str8
 	{
-		const U8 vs[] = { 0xd9, (U8)value.size }; 
+		const U8 vs[] = { 0xd9, (U8)value.Size }; 
 		fwrite(&vs[0], sizeof(vs[0]), arrsize(vs), (FILE *)filedata->File);
 	}
-	else if (value.size <= 65535) // str16
+	else if (value.Size <= 65535) // str16
 	{
 		const U8 v = 0xda;
-		const U16 v2 = (U16)value.size;
+		const U16 v2 = (U16)value.Size;
 		fwrite(&v, sizeof(v), 1, (FILE *)filedata->File);
 		fwrite(&v2, sizeof(v2), 1, (FILE *)filedata->File);
 	}
 	else // str32
 	{
 		const U8 v = 0xdb;
-		const U32 v2 = (U32)value.size;
+		const U32 v2 = (U32)value.Size;
 		fwrite(&v, sizeof(v), 1, (FILE *)filedata->File);
 		fwrite(&v2, sizeof(v2), 1, (FILE *)filedata->File);
 	}
-	fwrite(value.str, 1, value.size, (FILE *)filedata->File);
+	fwrite(value.String, 1, value.Size, (FILE *)filedata->File);
 }
 VOID MsgPackArrayBegin(PFILEDATA filedata, U32 count)
 {
@@ -1146,7 +1146,7 @@ static U8 MsgPackReadU8(PFILEDATA filedata)
 	U8 value;
 	if (filedata->Offset < filedata->FileSize)
 	{
-		value = filedata->Buffer.str[filedata->Offset++];
+		value = filedata->Buffer.String[filedata->Offset++];
 		return value;
 	}
 	return 0;
@@ -1156,8 +1156,8 @@ static U16 MsgPackReadU16(PFILEDATA filedata)
 	U16 value = 0;
 	if (filedata->Offset + 1 < filedata->FileSize)
 	{
-		value = ((U16)filedata->Buffer.str[filedata->Offset] << 8) |
-			((U16)filedata->Buffer.str[filedata->Offset + 1]);
+		value = ((U16)filedata->Buffer.String[filedata->Offset] << 8) |
+			((U16)filedata->Buffer.String[filedata->Offset + 1]);
 		filedata->Offset += 2;
 	}
 	return value;
@@ -1167,10 +1167,10 @@ static U32 MsgPackReadU32(PFILEDATA filedata)
 	U32 value = 0;
 	if (filedata->Offset + 3 < filedata->FileSize)
 	{
-		value = ((U32)filedata->Buffer.str[filedata->Offset] << 24) |
-			((U32)filedata->Buffer.str[filedata->Offset + 1] << 16) |
-			((U32)filedata->Buffer.str[filedata->Offset + 2] << 8) |
-			((U32)filedata->Buffer.str[filedata->Offset + 3]);
+		value = ((U32)filedata->Buffer.String[filedata->Offset] << 24) |
+			((U32)filedata->Buffer.String[filedata->Offset + 1] << 16) |
+			((U32)filedata->Buffer.String[filedata->Offset + 2] << 8) |
+			((U32)filedata->Buffer.String[filedata->Offset + 3]);
 		filedata->Offset += 4;
 	}
 	return value;
@@ -1212,10 +1212,10 @@ RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 		{
 			if (filedata->Offset + len <= filedata->FileSize)
 			{
-				memcpy(entry->Value.String.Name, &filedata->Buffer.str[filedata->Offset], len);
+				memcpy(entry->Value.String.Name, &filedata->Buffer.String[filedata->Offset], len);
 				entry->Value.String.Name[len] = '\0';
 				entry->Value.String.Length = len;
-				entry->Value.String.Hash = HashFNV1a(fdata(entry->Value.String.Name, len));
+				entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len));
 				filedata->Offset += len;
 				entry->ValueType = VALUETYPE_STRING;
 				return OK;
@@ -1279,10 +1279,10 @@ RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 		U32 len = MsgPackReadU8(filedata);
 		if (len < sizeof(entry->Value.String.Name) and filedata->Offset + len <= filedata->FileSize)
 		{
-			memcpy(entry->Value.String.Name, &filedata->Buffer.str[filedata->Offset], len);
+			memcpy(entry->Value.String.Name, &filedata->Buffer.String[filedata->Offset], len);
 			entry->Value.String.Name[len] = '\0';
 			entry->Value.String.Length = len;
-			entry->Value.String.Hash = HashFNV1a(fdata(entry->Value.String.Name, len));
+			entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len));
 			filedata->Offset += len;
 			entry->ValueType = VALUETYPE_STRING;
 			return OK;
@@ -1294,10 +1294,10 @@ RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 		U32 len = MsgPackReadU16(filedata);
 		if (len < sizeof(entry->Value.String.Name) and filedata->Offset + len <= filedata->FileSize)
 		{
-			memcpy(entry->Value.String.Name, &filedata->Buffer.str[filedata->Offset], len);
+			memcpy(entry->Value.String.Name, &filedata->Buffer.String[filedata->Offset], len);
 			entry->Value.String.Name[len] = '\0';
 			entry->Value.String.Length = len;
-			entry->Value.String.Hash = HashFNV1a(fdata(entry->Value.String.Name, len));
+			entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len));
 			filedata->Offset += len;
 			entry->ValueType = VALUETYPE_STRING;
 			return OK;

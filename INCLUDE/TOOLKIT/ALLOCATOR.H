@@ -19,22 +19,24 @@ VOID  Free(PALLOCATOR allocator, PVOID ptr);
 // / / / / / / / / / / / / / / / / / / / 
 // ALLOCATOR                           /
 // / / / / / / / / / / / / / / / / / / /
-ALLOCATOR DefaultAllocator(VOID);
-ALLOCATOR PoolAllocator(PPOOL pool);
-ALLOCATOR ArenaAllocator(PARENA arena);
+PALLOCATOR DefaultAllocator(VOID);
+PALLOCATOR PoolAllocator(PPOOL pool);
+PALLOCATOR ArenaAllocator(PARENA arena);
 
 // / / / / / / / / / / / / / / / / / / / 
 // ARENA                               /
 // / / / / / / / / / / / / / / / / / / /
+makeopaque(ARENABLOCK);
 typedef struct ARENABLOCK
 {
-    struct ARENABLOCK *Next;
+    PARENABLOCK Next;
     U64 Used, Size;
     U8  Data[];
 } ARENABLOCK, *PARENABLOCK, **PPARENABLOCK;
 typedef struct ARENA
 {
-    ALLOCATOR   Allocator;
+    ALLOCATOR   Parent;
+    ALLOCATOR   Self;
     U64         DefaultBlockSize;
     PARENABLOCK Head, Current;
 } ARENA, *PARENA, **PPARENA;
@@ -44,15 +46,13 @@ typedef struct SNAPSHOT
     U64         Used;
 } SNAPSHOT;
 
-PARENA   LoadArena(ALLOCATOR allocator, U64 default_block_size);
+PARENA   LoadArena(PALLOCATOR allocator, U64 default_block_size);
 VOID     FreeArena(PARENA arena);
 VOID     ArenaClear(PARENA arena);
 PVOID    ArenaPut(PARENA arena, U64 size, U64 alignment);
 PVOID    ArenaPutz(PARENA arena, U64 size, U64 alignment);
 SNAPSHOT ArenaSnap(PARENA arena);
 VOID     ArenaRewind(PARENA arena, SNAPSHOT snapshot);
-FSTR     ArenaStrdup(PARENA arena, FSTR string);
-
 
 // / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
 // FIXED-SIZE THREAD-SAFE OBJECT POOL                                          /
@@ -111,7 +111,7 @@ struct POOLITER
 };
 
 //// ALLOCATOR LIFETIME ////////////////
-PPOOL LoadPool(ALLOCATOR allocator, U64 ObjSize, U64 BlockCap);
+PPOOL LoadPool(PALLOCATOR allocator, U64 ObjSize, U64 BlockCap);
 VOID  FreePool(PPOOL P);
 VOID  ClearPool(PPOOL P);
 VOID  TrimPool(PPOOL P);

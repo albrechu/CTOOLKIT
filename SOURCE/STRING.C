@@ -3,107 +3,110 @@
 #include <string.h>
 #include <ctype.h>
 
-VOID FStrFree(PALLOCATOR allocator, FSTR s)
+VOID SVFree(PALLOCATOR allocator, SV string)
 {
-    Free(allocator, (PVOID)s.str);
+   if (not allocator) allocator = DefaultAllocator();
+   Free(allocator, (PVOID)string.String);
 }
-BOOL FStrEqual(FSTR s1, FSTR s2)
+BOOL SVEqual(SV s1, SV s2)
 {
-    if (fstrinvalid(s1) or fstrinvalid(s2)) return false;
-    if (s1.str == s2.str and s1.size == s2.size) return true;
+   if (svinvalid(s1) or svinvalid(s2)) return false;
+   if (s1.String == s2.String and s1.Size == s2.Size) return true;
 
-    if (s1.size != s2.size) return false;
-    if (s1.size == 0) return true;
-    return (memcmp(s1.str, s2.str, s1.size) == 0);
+   if (s1.Size != s2.Size) return false;
+   if (s1.Size == 0) return true;
+   return (memcmp(s1.String, s2.String, s1.Size) == 0);
 }
-BOOL FStrEqualNoCase(FSTR s1, FSTR s2)
+BOOL SVEqualNoCase(SV s1, SV s2)
 {
-    if (fstrinvalid(s1) or fstrinvalid(s2)) return false;
-    if (s1.str == s2.str and s1.size == s2.size) return true;
+   if (svinvalid(s1) or svinvalid(s2)) return false;
+   if (s1.String == s2.String and s1.Size == s2.Size) return true;
 
-    if (s1.size != s2.size) return false;
-    if (s1.size == 0)       return true;
+   if (s1.Size != s2.Size) return false;
+   if (s1.Size == 0)       return true;
 
-    const U8 *p1 = (const U8 *)s1.str;
-    const U8 *p2 = (const U8 *)s2.str;
-    for (U64 i = 0; i < s1.size; i++) 
-    {
-        if (p1[i] != p2[i]) 
-        {
-            U8 c1 = p1[i] | 0x20;
-            U8 c2 = p2[i] | 0x20;
-            if (c1 != c2 or c1 < 'a' or c1 > 'z') 
-                return false;
-        }
-    }
-    return true;
+   const U8 *p1 = (const U8 *)s1.String;
+   const U8 *p2 = (const U8 *)s2.String;
+   for (U64 i = 0; i < s1.Size; i++)
+   {
+	  if (p1[i] != p2[i])
+	  {
+		 U8 c1 = p1[i] | 0x20;
+		 U8 c2 = p2[i] | 0x20;
+		 if (c1 != c2 or c1 < 'a' or c1 > 'z')
+			return false;
+	  }
+   }
+   return true;
 }
-I32 FStrCompare(FSTR s1, FSTR s2)
+I32 SVCompare(SV s1, SV s2)
 {
-    if (fstrinvalid(s1) or fstrinvalid(s2))
-        return (s1.str == s2.str) ? 0 : (s1.str ? 1 : -1);
-    // Compare up to the smaller length
-    U64 min_size = (s1.size < s2.size) ? s1.size : s2.size;
-    I32 res = memcmp(s1.str, s2.str, min_size);
-    if (res != 0)
-        return res;
-    // Final size check
-    if (s1.size < s2.size)      return -1;
-    else if (s1.size > s2.size) return 1;
-    else                          return 0;
+   if (svinvalid(s1) or svinvalid(s2))
+	  return (s1.String == s2.String) ? 0 : (s1.String ? 1 : -1);
+   // Compare up to the smaller length
+   U64 min_size = (s1.Size < s2.Size) ? s1.Size : s2.Size;
+   I32 res = memcmp(s1.String, s2.String, min_size);
+   if (res != 0)
+	  return res;
+   // Final size check
+   if (s1.Size < s2.Size)      return -1;
+   else if (s1.Size > s2.Size) return 1;
+   else                          return 0;
 }
-I64 FStrChr(FSTR s, CHAR c)
+I64 SVChr(SV s, CHAR c)
 {
-    if (fstrinvalid(s)) return -1;
-    PCHAR p = (PCHAR)memchr(s.str, c, s.size);
-    if (not p) return -1;
-    return (I64)(p - s.str);
+   if (svinvalid(s)) return -1;
+   PCHAR p = (PCHAR)memchr(s.String, c, s.Size);
+   if (not p) return -1;
+   return (I64)(p - s.String);
 }
-FSTR FstrStrdup(PALLOCATOR allocator, FSTR string)
+SV SVStrdup(PALLOCATOR allocator, SV string)
 {
-    FSTR r = string;
-    r.str = Alloc(allocator, sizeof(CHAR) * string.size, alignof(CHAR));
-    if (!r.str)
-        return FSTR_INVALID;
-    memcpy(r.str, string.str, string.size);
-    return r;
+   SV r = string;
+   if (not allocator) allocator = DefaultAllocator();
+   r.String = (PCHAR)Alloc(allocator, sizeof(CHAR) * string.Size, alignof(CHAR));
+   if (!r.String)
+	  return SV_INVALID;
+   memcpy(r.String, string.String, string.Size);
+   return r;
 }
-FSTR FStrJoinList(PALLOCATOR allocator, CHAR separator, U32 strings_count, PFSTR strings)
+SV SVJoinList(PALLOCATOR allocator, CHAR separator, U32 strings_count, PSV strings)
 {
-    U64 size = strings_count; // For separators and null terminator
-    for (U32 i = 0; i < strings_count; i++) // For string sizes
-        size += strings[i].size;
+   U64 size = strings_count; // For separators and null terminator
+   for (U32 i = 0; i < strings_count; i++) // For string sizes
+	  size += strings[i].Size;
 
-    PCHAR buffer = (PCHAR)Alloc(allocator, size, alignof(CHAR));
-    U64 offset = 0;
-    U32 i;
-    for (i = 0; i < strings_count - 1; i++)
-    {
-        memcpy(buffer + offset, strings[i].str, strings[i].size);
-        offset += strings[i].size;
-        buffer[offset] = separator;
-        offset += 1;
-    }
-    memcpy(buffer + offset, strings[i].str, strings[i].size);
-    offset += strings[i].size;
-    buffer[offset] = '\0';
-    return (FSTR) { .str = buffer, .size = size };
+   if (not allocator) allocator = DefaultAllocator();
+   PCHAR buffer = (PCHAR)Alloc(allocator, size, alignof(CHAR));
+   U64 offset = 0;
+   U32 i;
+   for (i = 0; i < strings_count - 1; i++)
+   {
+	  memcpy(buffer + offset, strings[i].String, strings[i].Size);
+	  offset += strings[i].Size;
+	  buffer[offset] = separator;
+	  offset += 1;
+   }
+   memcpy(buffer + offset, strings[i].String, strings[i].Size);
+   offset += strings[i].Size;
+   buffer[offset] = '\0';
+   return (SV) { .String = buffer, .Size = size };
 }
-FSTR FStrJoin(PALLOCATOR allocator, U32 strings_count, PFSTR strings)
+SV SVJoin(PALLOCATOR allocator, U32 strings_count, PSV strings)
 {
-    U64 size = 1;
-    for (U32 i = 0; i < strings_count; i++) // For string sizes
-        size += strings[i].size;
+   U64 size = 1;
+   for (U32 i = 0; i < strings_count; i++) // For string sizes
+	  size += strings[i].Size;
 
-    PCHAR buffer = (PCHAR)Alloc(allocator, size, alignof(CHAR));
-    U64 offset = 0;
-    for (U32 i = 0; i < strings_count; i++)
-    {
-        memcpy(buffer + offset, strings[i].str, strings[i].size);
-        offset += strings[i].size;
-    }
-    buffer[offset] = '\0';
-    return (FSTR) { .str = buffer, .size = size };
+   PCHAR buffer = (PCHAR)Alloc(allocator, size, alignof(CHAR));
+   U64 offset = 0;
+   for (U32 i = 0; i < strings_count; i++)
+   {
+	  memcpy(buffer + offset, strings[i].String, strings[i].Size);
+	  offset += strings[i].Size;
+   }
+   buffer[offset] = '\0';
+   return (SV) { .String = buffer, .Size = size };
 }
 
 //
@@ -138,111 +141,104 @@ FSTR FStrJoin(PALLOCATOR allocator, U32 strings_count, PFSTR strings)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-FSTR FStrFind(FSTR haystack, FSTR needle)
+SV SVFind(SV haystack, SV needle)
 {
-    if (fstrinvalid(haystack) or fstrinvalid(needle) or haystack.size < needle.size) return FSTR_INVALID;
+   if (svinvalid(haystack) or svinvalid(needle) or haystack.Size < needle.Size) return SV_INVALID;
 
-    const CHAR needle_first = needle.str[0];
-    U64 needle_len = needle.size;
-    U64 needle_len_1 = needle_len - 1;
+   const CHAR needle_first = needle.String[0];
+   U64 needle_len = needle.Size;
+   U64 needle_len_1 = needle_len - 1;
+   // Compute initial window checksum difference and identity check
+   I64 sums_diff = 0;
+   BOOL identity = true;
+   U64  processed_bytes = 0;
+   // Build rolling window up to needle length from the absolute start
+   while (processed_bytes < needle.Size)
+   {
+	  sums_diff += haystack.String[processed_bytes];
+	  sums_diff -= needle.String[processed_bytes];
+	  identity  &= (haystack.String[processed_bytes] == needle.String[processed_bytes]);
+	  processed_bytes++;
+   }
 
-    // Compute initial window checksum difference and identity check
-    U32 sums_diff = 0;
-    BOOL identical = true;
-    U64  processed_bytes = 0;
+   if (identity)
+	  return sv(haystack.String, needle.Size);
 
-    // Build rolling window up to needle length from the absolute start
-    while (processed_bytes < needle.size)
-    {
-        sums_diff += (U32)(unsigned char)haystack.str[processed_bytes];
-        sums_diff -= (U32)(unsigned char)needle.str[processed_bytes];
-        identical &= (haystack.str[processed_bytes] == needle.str[processed_bytes]);
-        processed_bytes++;
-    }
+   // Setup rolling window variables
+   CSTR it = haystack.String;
+   CSTR end = haystack.String + (haystack.Size - needle_len);
+   U64 i_haystack = needle_len;
+   while (it < end) // Rolling hash execution loop
+   {
+	  // Slide the window forward: subtract the character exiting, add the one entering
+	  sums_diff -= *it++;
+	  sums_diff += haystack.String[i_haystack++];
 
-    if (identical)
-        return fstr(haystack.str, needle.size);
-
-    // Setup rolling window variables
-    CSTR it = haystack.str;
-    CSTR end = haystack.str + (haystack.size - needle_len);
-    U64 i_haystack = needle_len;
-
-    while (it < end) // Rolling hash execution loop
-    {
-        // Slide the window forward: subtract the character exiting, add the one entering
-        sums_diff -= (U32)(unsigned char)*it++;
-        sums_diff += (U32)(unsigned char)haystack.str[i_haystack++];
-
-        // Verify window checksum and check characters
-        if (sums_diff == 0 and needle_first == *it and memcmp(it, needle.str, needle_len_1) == 0)
-            return fstr(haystack.str + (U64)(it - haystack.str), needle.size);
-    }
-    return FSTR_INVALID;
+	  // Verify window checksum and check characters
+	  if (sums_diff == 0 and needle_first == *it and memcmp(it, needle.String, needle_len_1) == 0)
+		 return sv(haystack.String + (U64)(it - haystack.String), needle.Size);
+   }
+   return SV_INVALID;
 }
-
-FSTR FStrFindNoCase(FSTR haystack, FSTR needle)
+SV SVFindNoCase(SV haystack, SV needle)
 {
-    if (fstrinvalid(haystack) or fstrinvalid(needle) or haystack.size < needle.size)
-        return FSTR_INVALID;
+   if (svinvalid(haystack) or svinvalid(needle) or haystack.Size < needle.Size)
+	  return SV_INVALID;
 
-    const CHAR needle_first = (CHAR)tolower((unsigned char)needle.str[0]);
-    U64 needle_len = needle.size;
-    U64 needle_len_1 = needle_len - 1;
+   const int needle_first = tolower(needle.String[0]);
+   U64 needle_len = needle.Size;
+   U64 needle_len_1 = needle_len - 1;
 
-    // Compute initial window checksum difference and identity check
-    U32 sums_diff = 0;
-    BOOL identical = true;
-    U64 processed_bytes = 0;
+   // Compute initial window checksum difference and identity check
+   I64 sums_diff = 0;
+   BOOL identical = true;
+   U64 processed_bytes = 0;
 
-    // Build rolling window up to needle length from the absolute start
-    while (processed_bytes < needle_len)
-    {
-        unsigned char h = (unsigned char)tolower((unsigned char)haystack.str[processed_bytes]);
-        unsigned char n = (unsigned char)tolower((unsigned char)needle.str[processed_bytes]);
+   // Build rolling window up to needle length from the absolute start
+   while (processed_bytes < needle_len)
+   {
+	  int h = tolower(haystack.String[processed_bytes]);
+	  int n = tolower(needle.String[processed_bytes]);
 
-        sums_diff += (U32)h;
-        sums_diff -= (U32)n;
+	  sums_diff += h;
+	  sums_diff -= n;
 
-        identical &= (h == n);
-        processed_bytes++;
-    }
+	  identical &= (h == n);
+	  processed_bytes++;
+   }
 
-    if (identical)
-        return fstr(haystack.str, needle_len);
+   if (identical)
+	  return sv(haystack.String, needle_len);
 
-    // Setup rolling window variables
-    CSTR it = haystack.str;
-    CSTR end = haystack.str + (haystack.size - needle_len);
-    U64 i_haystack = needle_len;
+   // Setup rolling window variables
+   CSTR it = haystack.String;
+   CSTR end = haystack.String + (haystack.Size - needle_len);
+   U64 i_haystack = needle_len;
 
-    while (it < end) // Rolling hash execution loop
-    {
-        // Slide the window forward
-        sums_diff -= (U32)(unsigned char)tolower((unsigned char)*it);
-        it++;
-        sums_diff += (U32)(unsigned char)tolower((unsigned char)haystack.str[i_haystack++]);
+   while (it < end) // Rolling hash execution loop
+   {
+	  // Slide the window forward
+	  sums_diff -= tolower(*it);
+	  it++;
+	  sums_diff += tolower(haystack.String[i_haystack++]);
 
-        // Fast first-character check
-        if (sums_diff == 0 and needle_first == (CHAR)tolower((unsigned char)*it))
-        {
-            BOOL match = true;
-            for (U64 i = 1; i < needle_len; ++i)
-            {
-                unsigned char h = (unsigned char)tolower((unsigned char)it[i]);
-                unsigned char n = (unsigned char)tolower((unsigned char)needle.str[i]);
+	  // Fast first-character check
+	  if (sums_diff == 0 and needle_first == tolower(*it))
+	  {
+		 BOOL match = true;
+		 for (U64 i = 1; i < needle_len; ++i)
+		 {
+			if (tolower(it[i]) != tolower(needle.String[i]))
+			{
+			   match = false;
+			   break;
+			}
+		 }
 
-                if (h != n)
-                {
-                    match = false;
-                    break;
-                }
-            }
+		 if (match)
+			return sv(haystack.String + (U64)(it - haystack.String), needle_len);
+	  }
+   }
 
-            if (match)
-                return fstr(haystack.str + (U64)(it - haystack.str), needle_len);
-        }
-    }
-
-    return FSTR_INVALID;
+   return SV_INVALID;
 }

@@ -21,6 +21,24 @@ extern "C" {
 // HELPER FUNCTIONS                   //
 ////////////////////////////////////////
 // / / / / / / / / / / / / / / / / / / / 
+// NULL                                /
+// / / / / / / / / / / / / / / / / / / /
+#ifndef null
+#ifdef __cplusplus
+#define null nullptr
+#else
+#define null ((void *)0)
+#endif
+#endif
+// / / / / / / / / / / / / / / / / / / / 
+// LITERAL                             /
+// / / / / / / / / / / / / / / / / / / /
+#if defined(__cplusplus)
+#define lit(type, ...) type{ __VA_ARGS__ }
+#else
+#define lit(type, ...) (type){ __VA_ARGS__ }
+#endif
+// / / / / / / / / / / / / / / / / / / / 
 // ALIGNOF                             /
 // / / / / / / / / / / / / / / / / / / /
 #ifdef __cplusplus

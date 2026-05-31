@@ -49,19 +49,20 @@ int main()
 			Progress(LOGGING_SPECIAL, rounddiv(i,  9999999ULL), "Processing...");
 	}
 	
-	ALLOCATOR allocator = DefaultAllocator();
+	PALLOCATOR alloc = DefaultAllocator();
 
-	FSTR args[] = 
+	SV args[] = 
 	{ 
-		fstrstr("powershell.exe"),
-		fstrstr("-NoProfile"),
-		fstrstr("-ExecutionPolicy"),
-		fstrstr("Bypass"),
-		fstrstr("-Command"),
-		fstrstr("Get-Date")
+		svlit("powershell.exe"),
+		svlit("-NoProfile"),
+		svlit("-ExecutionPolicy"),
+		svlit("Bypass"),
+		svlit("-Command"),
+		svlit("Get-Date")
 	};
-	_ = Run(&allocator, arrsize(args), args);
-	PPROCESS process = LoadProcess(&allocator, PROCESSMODE_READ, arrsize(args), args);
+	_ = Run(alloc, arrsize(args), args);
+
+	PPROCESS process = LoadProcess(alloc, PROCESSMODE_READ, arrsize(args), args);
 	if (process)
 	{
 		CHAR buf[4096];

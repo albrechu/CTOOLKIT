@@ -46,7 +46,7 @@ arrsize(arr);                         // size of array arr
 stringify(x);                         // stringify x
 breakpoint();                         // trigger a breakpoint
 unreachable();                        // mark code path as unreachable
-LIT(VEC3, .x = 50, .y = 10, .z = 30); // create type literal with field values
+lit(VEC3, .x = 50, .y = 10, .z = 30); // create type literal with field values
 ```
 ### BUNDLE
 ```c
@@ -93,13 +93,13 @@ dfs(16);
 ```
 ### DEFAULT (MALLOC/FREE)
 ```c
-ALLOCATOR allocator = DefaultAllocator();
-PVOID mem = Alloc(&allocator, 256 * sizeof(U32), alignof(U32)); // allocate 256 bytes
-Free(&allocator, mem); 
+PALLOCATOR default_allocator = DefaultAllocator();
+PVOID mem = Alloc(default_allocator, 256 * sizeof(U32), alignof(U32)); // allocate 256 bytes.
+Free(allocator, mem); 
 ```
 ### ARENA
 ```c
-PARENA arena = LoadArena(allocator, 1024); // default_blocksize = 1024
+PARENA arena = LoadArena(null, 1024); // default_blocksize = 1024
 df(FreeArena, arena); // Defer freeing the arena
 
 PVOID a = ArenaPut(arena, 256); // allocate 256 bytes from arena
@@ -107,13 +107,12 @@ PVOID b = ArenaPutz(arena, 256); // allocate zeroed 256 bytes from arena
 ArenaClear(arena);
 a = ArenaPut(arena, 256);
 SNAPSHOT snap = ArenaSnap(arena); // take a snapshot of arena state
-FSTR str = ArenaStrdup(arena, fstrstr("Hello, World!"));
+SV str = ArenaStrdup(arena, svlit("Hello, World!"));
 ArenaRewind(arena, snap); // rewind arena to snapshot, freeing str
-allocator = ArenaAllocator(arena); 
 ```
 ###  POOL
 ```c
-PPOOL pool = LoadPool(allocator, sizeof(F64), 16); 
+PPOOL pool = LoadPool(ArenaAllocator(arena), sizeof(F64), 16); // Allocate a pool of 16 doubles. You can even pass the arena allocator as parent to allocate pools from.
 df(FreePool, pool); // Defer freeing the pool
 
 *(F64 *)PoolPut(pool) = 3.1415; // allocate a double from the pool
@@ -183,20 +182,20 @@ for (U64 i = 0; i < (U64)1e9; i++)
 #### RUN PROCESS
 ```c
 ALLOCATOR allocator = DefaultAllocator();
-FSTR args[] = 
+SV args[] = 
 { 
-	fstrstr("powershell.exe"),
-	fstrstr("-NoProfile"),
-	fstrstr("-ExecutionPolicy"),
-	fstrstr("Bypass"),
-	fstrstr("-Command"),
-	fstrstr("Get-Date")
+	svlit("powershell.exe"),
+	svlit("-NoProfile"),
+	svlit("-ExecutionPolicy"),
+	svlit("Bypass"),
+	svlit("-Command"),
+	svlit("Get-Date")
 };
 _ = Run(&allocator, arrsize(args), args);
 ```
 #### WITH PIPES
 ```c
-PPROCESS process = LoadProcess(&allocator, PROCESSMODE_READ, arrsize(args), args);
+PPROCESS process = LoadProcess(null, PROCESSMODE_READ, arrsize(args), args);
 if (process)
 {
 	CHAR buf[4096];
@@ -223,9 +222,9 @@ if (process)
 dfs(16);
 ALLOCATOR allocator = DefaultAllocator();
 . 
-PMUTEX mtx = LoadMutex(&allocator);
+PMUTEX mtx = LoadMutex(null);
 df(FreeMutex, mtx);
-PCONDITIONVARIABLE cv = LoadConditionVariable(&allocator);
+PCONDITIONVARIABLE cv = LoadConditionVariable(null);
 df(FreeConditionVariable, cv
 volatile U32 a = 0;
 StoreU32(&a, 42);
@@ -286,40 +285,40 @@ PathSetWorkingDirToExecutable();
 
 /// File Reading
 FILEDATA f;
-if (BeginFile(DefaultAllocator(), fstrstr("../CMakeCache.txt"), FILEMODE_READ, 0, &f) == OK)
+if (BeginFile(DefaultAllocator(), svlit("../CMakeCache.txt"), FILEMODE_READ, 0, &f) == OK)
 {
-	FSTR content;
+	SV content;
 	RESULT rc = FileReadAll(&f, true, &content);
 	if (rc != OK)
 	{
 		errln("Failed to read file.");
 		return -1;
 	}
-	noteln("File content:\n%.*s", (int)content.size, content.str);
+	noteln("File content:\n%.*s", (int)content.size, content.Str);
 	EndFile(&f);
 }
 ```
 ### INI
 #### INI WRITING
 ```c
-if (BeginFile(DefaultAllocator(), fstrstr("config.ini"), FILEMODE_WRITETEXT, 0, &f) == OK)
+if (BeginFile(DefaultAllocator(), svlit("config.ini"), FILEMODE_WRITETEXT, 0, &f) == OK)
 {
 	// [Settings]
-	IniGroup(&f, fstrstr("Settings"));
-	IniFloat(&f, fstrstr("Volume"), 0.75f);
-	IniInteger(&f, fstrstr("ResolutionWidth"), 1920);
-	IniBool(&f, fstrstr("Fullscreen"), true);
+	IniGroup(&f, svlit("Settings"));
+	IniFloat(&f, svlit("Volume"), 0.75f);
+	IniInteger(&f, svlit("ResolutionWidth"), 1920);
+	IniBool(&f, svlit("Fullscreen"), true);
 	// [User]
-	IniGroup(&f, fstrstr("User"));
-	IniString(&f, fstrstr("Username"), fstrstr("JohnDoe"));
-	IniInteger(&f, fstrstr("Age"), 42);
+	IniGroup(&f, svlit("User"));
+	IniString(&f, svlit("Username"), svlit("JohnDoe"));
+	IniInteger(&f, svlit("Age"), 42);
 
 	EndFile(&f);
 }
 ```
 #### INI READING
 ```c
-if (BeginFile(DefaultAllocator(), fstrstr("config.ini"), FILEMODE_READTEXT, 0, &f) == OK)
+if (BeginFile(DefaultAllocator(), svlit("config.ini"), FILEMODE_READTEXT, 0, &f) == OK)
 {
 	INIENTRY entry;
 	while (IniReadNextEntry(&f, &entry) == OK)
@@ -349,32 +348,32 @@ if (BeginFile(DefaultAllocator(), fstrstr("config.ini"), FILEMODE_READTEXT, 0, &
 ### JSON
 #### JSON WRITING
 ```c
-if (BeginFile(DefaultAllocator(), fstrstr("test.json"), FILEMODE_WRITETEXT, 0, &f) == OK)
+if (BeginFile(DefaultAllocator(), svlit("test.json"), FILEMODE_WRITETEXT, 0, &f) == OK)
 {
 	JsonBegin(&f);
 	{
-		JsonObjectBegin(&f, fstrstr("player"));
+		JsonObjectBegin(&f, svlit("player"));
 		{
-			JsonString(&f, fstrstr("name"), fstrstr("Alice"));
-			JsonInteger(&f, fstrstr("score"), 12345);
-			JsonFloat(&f, fstrstr("health"), 0.85f);
-			JsonArrayBegin(&f, fstrstr("position"));
+			JsonString(&f, svlit("name"), svlit("Alice"));
+			JsonInteger(&f, svlit("score"), 12345);
+			JsonFloat(&f, svlit("health"), 0.85f);
+			JsonArrayBegin(&f, svlit("position"));
 			for (I32 i = 0; i < 3; i++)
 			{
-				JsonFloat(&f, FSTR_INVALID, (F32)(i * 1.5f));
+				JsonFloat(&f, SV_INVALID, (F32)(i * 1.5f));
 			}
 			JsonArrayEnd(&f);
 
-			JsonArrayBegin(&f, fstrstr("inventory"));
+			JsonArrayBegin(&f, svlit("inventory"));
 			{
-				JsonString(&f, FSTR_INVALID, fstrstr("Sword"));
-				JsonString(&f, FSTR_INVALID, fstrstr("Hammer"));
+				JsonString(&f, SV_INVALID, svlit("Sword"));
+				JsonString(&f, SV_INVALID, svlit("Hammer"));
 			}
 			JsonArrayEnd(&f);
 
-			JsonObjectBegin(&f, fstrstr("skills"));
+			JsonObjectBegin(&f, svlit("skills"));
 			JsonObjectEnd(&f);
-			JsonFloat(&f, fstrstr("movement speed"), 4.512331);
+			JsonFloat(&f, svlit("movement speed"), 4.512331);
 		}
 		JsonObjectEnd(&f);
 	}
@@ -384,7 +383,7 @@ if (BeginFile(DefaultAllocator(), fstrstr("test.json"), FILEMODE_WRITETEXT, 0, &
 ```
 #### JSON READING
 ```c
-if (BeginFile(DefaultAllocator(), fstrstr("test.json"), FILEMODE_READTEXT, 0, &f) == OK)
+if (BeginFile(DefaultAllocator(), svlit("test.json"), FILEMODE_READTEXT, 0, &f) == OK)
 {
 	JSONENTRY entry;
 	while (JsonReadNextEntry(&f, &entry) == OK)

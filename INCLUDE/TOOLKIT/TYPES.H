@@ -11,14 +11,6 @@
 typedef enum bool{ false = 0, true = !false } bool;
 #endif
 
-#define null NULL
-
-#if defined(__cplusplus)
-#define LIT(type, ...) type{ __VA_ARGS__ }
-#else
-#define LIT(type, ...) (type){ __VA_ARGS__ }
-#endif
-
 typedef int8_t      I8;
 typedef int16_t     I16;
 typedef int32_t     I32;
@@ -39,11 +31,11 @@ typedef CPATH       IPATH;
 typedef PATH        OPATH, IOPATH;
 typedef struct FILE *PFILE;
 
-typedef struct FSTR
+typedef struct SV
 {
-	PCHAR str;
-	U64   size;
-} FSTR, *PFSTR;
+	PCHAR String;
+	U64   Size;
+} SV, *PSV;
 
 typedef struct NAME
 {
@@ -52,11 +44,11 @@ typedef struct NAME
 	U64  Hash; // FNV-1a hash of the name, for quick comparisons
 } NAME;
 
-typedef struct FDATA
+typedef struct DV
 {
-	PVOID data;
-	U64   size;
-} FDATA;
+	PVOID Data;
+	U64   Size;
+} DV;
 
 typedef enum RESULT
 {
@@ -85,20 +77,22 @@ typedef PVOID(*REALLOC)(PVOID user_data, PVOID ptr, U64 size, U64 alignment);
 typedef VOID(*FREE)(PVOID user_data, PVOID ptr);
 typedef struct ALLOCATOR
 {
-	PVOID   user_data;
-	ALLOC   alloc;
-	REALLOC realloc;
-	FREE    free;
+	PVOID   UserData;
+	ALLOC   Alloc;
+	REALLOC Realloc;
+	FREE    Free;
 } ALLOCATOR, *PALLOCATOR, **PPALLOCATOR;
 
 
-static const FSTR  FSTR_INVALID;
-#define fstr(string, length) LIT(FSTR, .str = (PCHAR)string, .size = length)
-#define fstrinvalid(s) ((s).str == null)
-#define fstrvalid(s) ((s).str != null)
-#define fstrstr(str) fstr(str, sizeof(str) - 1)
+static const SV SV_INVALID;
+#define sv(string, length)     lit(SV, .String = (PCHAR)(string), .Size = (length))
+#define svinvalid(string_view) ((string_view).String == null)
+#define svvalid(string_view)   ((string_view).String != null)
+#define svlit(string_literal)  sv(string_literal, sizeof(string_literal) - 1)
+#define svcstr(cstring)        sv(cstring, strlen(cstring))
 
-static const FDATA FDATA_INVALID;
-#define fdata(d, s) LIT(FDATA, .data = d, .size = s)
-#define fdatainvalid(s) ((s).data == null)
-#define fdatafromstr(str) fdata(str, sizeof(str) - 1)
+static const DV DV_INVALID;
+#define dv(data, size)        lit(DV, (data), (size))
+#define dvinvalid(data_view)  ((data_view).Data == null)
+#define dvlit(string_literal) dv(string_literal, sizeof(string_literal) - 1)
+#define dvcstr(cstring)       dv(cstring, sizeof(cstring) - 1)

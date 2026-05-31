@@ -120,11 +120,11 @@ BOOL LoadArgs(int argc, PPCHAR argv, U64 options_count, PARGOPTION options);
 // / / / / / / / / / / / / / / / / / / / 
 // COMMANDS                            /
 // / / / / / / / / / / / / / / / / / / /
-RESULT Run(PALLOCATOR allocator, U32 args_count, PFSTR args);
+RESULT Run(PALLOCATOR allocator, U32 args_count, PSV args);
 // / / / / / / / / / / / / / / / / / / / 
 // PROCESS                             /
 // / / / / / / / / / / / / / / / / / / /
-PPROCESS      LoadProcess(PALLOCATOR allocator, PROCESSMODE mode, U32 args_count, PFSTR args);
+PPROCESS      LoadProcess(PALLOCATOR allocator, PROCESSMODE mode, U32 args_count, PSV args);
 VOID          FreeProcess(PPROCESS process);
 RESULT        ProcessRead(PPROCESS process, PVOID buffer, U64 size, U64 *bytes_read);
 RESULT        ProcessWrite(PPROCESS process, PVOID buffer, U64 size, U64 *bytes_written);

@@ -8,17 +8,17 @@ int main()
 	PathSetWorkingDirToExecutable();
 
 	PATH cache_path;
-	FSTR cache_file = PathAbs(fstrstr("../CMakeCache.txt"), cache_path);
+	SV cache_file = PathAbs(svlit("../CMakeCache.txt"), cache_path);
 
 	FILEDATA f;
 	// Read the entire content of the CMakeCache.txt file
 	if (BeginFile(DefaultAllocator(), cache_file, FILEMODE_READ, 0, &f) == OK)
 	{
-		FSTR content;
+		SV content;
 		RESULT rc = FileReadAll(&f, true, &content);
 		if (rc == OK)
 		{
-			noteln("File content:\n%.*s", (I32)content.size, content.str);
+			noteln("File content:\n%.*s", (I32)content.Size, content.String);
 		}
 		else
 		{
@@ -30,22 +30,22 @@ int main()
 		errln("Failed to open file.");
 	}
 	// Write an INI file with various types of values
-	if (FileOpen(fstrstr("test.ini"), FILEMODE_WRITETEXT, &f) == OK)
+	if (FileOpen(svlit("test.ini"), FILEMODE_WRITETEXT, &f) == OK)
 	{
-		IniGroup(&f, fstrstr("Settings"));
-		IniFloat(&f, fstrstr("Volume"), 0.75f);
-		IniInteger(&f, fstrstr("ResolutionWidth"), 1920);
-		IniBool(&f, fstrstr("Fullscreen"), true);
+		IniGroup(&f, svlit("Settings"));
+		IniFloat(&f, svlit("Volume"), 0.75f);
+		IniInteger(&f, svlit("ResolutionWidth"), 1920);
+		IniBool(&f, svlit("Fullscreen"), true);
 
-		IniGroup(&f, fstrstr("User"));
-		IniString(&f, fstrstr("Username"), fstrstr("JohnDoe"));
-		IniInteger(&f, fstrstr("Age"), 42);
+		IniGroup(&f, svlit("User"));
+		IniString(&f, svlit("Username"), svlit("JohnDoe"));
+		IniInteger(&f, svlit("Age"), 42);
 
 		FileClose(&f);
 	}
 	// Read back the INI file to verify it was written correctly
 	INIENTRY entry;
-	FileOpen(fstrstr("test.ini"), FILEMODE_READTEXT, &f);
+	FileOpen(svlit("test.ini"), FILEMODE_READTEXT, &f);
 	while (IniReadNextEntry(&f, &entry) == OK)
 	{
 		switch (entry.ValueType)
@@ -70,7 +70,7 @@ int main()
 	FileClose(&f);
 
 	// Read back the JSON file to verify it was written correctly
-	if (FileOpen(fstrstr("test2.json"), FILEMODE_READTEXT, &f) == OK)
+	if (FileOpen(svlit("test2.json"), FILEMODE_READTEXT, &f) == OK)
 	{
 		JSONENTRY json_entry;
 		while (JsonReadNextEntry(&f, &json_entry) == OK)
@@ -108,32 +108,32 @@ int main()
 	}
 
 	// Write a JSON file 
-	if (FileOpen(fstrstr("test2.json"), FILEMODE_WRITETEXT, &f) == OK)
+	if (FileOpen(svlit("test2.json"), FILEMODE_WRITETEXT, &f) == OK)
 	{
 		JsonBegin(&f);
 		{
-			JsonObjectBegin(&f, fstrstr("player"));
+			JsonObjectBegin(&f, svlit("player"));
 			{
-				JsonString(&f, fstrstr("name"), fstrstr("Alice"));
-				JsonInteger(&f, fstrstr("score"), 12345);
-				JsonFloat(&f, fstrstr("health"), 0.85f);
-				JsonArrayBegin(&f, fstrstr("position"));
+				JsonString(&f, svlit("name"), svlit("Alice"));
+				JsonInteger(&f, svlit("score"), 12345);
+				JsonFloat(&f, svlit("health"), 0.85f);
+				JsonArrayBegin(&f, svlit("position"));
 				for (I32 i = 0; i < 3; i++)
 				{
-					JsonFloat(&f, FSTR_INVALID, (F32)(i * 1.5f));
+					JsonFloat(&f, SV_INVALID, (F32)(i * 1.5f));
 				}
 				JsonArrayEnd(&f);
 
-				JsonArrayBegin(&f, fstrstr("inventory"));
+				JsonArrayBegin(&f, svlit("inventory"));
 				{
-					JsonString(&f, FSTR_INVALID, fstrstr("Sword"));
-					JsonString(&f, FSTR_INVALID, fstrstr("Hammer"));
+					JsonString(&f, SV_INVALID, svlit("Sword"));
+					JsonString(&f, SV_INVALID, svlit("Hammer"));
 				}
 				JsonArrayEnd(&f);
 
-				JsonObjectBegin(&f, fstrstr("skills"));
+				JsonObjectBegin(&f, svlit("skills"));
 				JsonObjectEnd(&f);
-				JsonFloat(&f, fstrstr("movement speed"), 4.512331);
+				JsonFloat(&f, svlit("movement speed"), 4.512331);
 			}
 			JsonObjectEnd(&f);
 		}

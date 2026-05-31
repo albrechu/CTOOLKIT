@@ -99,21 +99,21 @@ SOCKET SocketAccept(SOCKET server)
     return (SOCK)socket;
 #endif
 }
-U64 SocketSend(SOCKET socket, FDATA data)
+U64 SocketSend(SOCKET socket, DV data)
 {
-    int bytes = send(socket, data.data, (int)data.size, 0);
+    int bytes = send(socket, data.Data, (int)data.Size, 0);
     if (bytes <= 0)
         return 0;
     return (U64)bytes;
 }
-FDATA SocketReceive(SOCKET socket, FDATA buffer)
+DV SocketReceive(SOCKET socket, DV buffer)
 {
-    int bytes = recv(socket, buffer.data, (int)buffer.size, 0);
+    int bytes = recv(socket, buffer.Data, (int)buffer.Size, 0);
     if (bytes <= 0)
-        return FDATA_INVALID;
-    return fdata(buffer.data, (U64)bytes);
+        return DV_INVALID;
+    return dv(buffer.Data, (U64)bytes);
 }
-U64 SocketSendTo(SOCKET socket, IPV4 ip, PORT port, FDATA data)
+U64 SocketSendTo(SOCKET socket, IPV4 ip, PORT port, DV data)
 {
     CAssert(SocketIsOpen(socket) and "Socket has to be open to send anything.");
 
@@ -125,20 +125,20 @@ U64 SocketSendTo(SOCKET socket, IPV4 ip, PORT port, FDATA data)
 #else
     inet_pton(AF_INET, ip, &addr.sin_addr.s_addr);
 #endif
-    int sent = sendto(socket, (CSTR)data.data, (int)data.size, 0, (struct sockaddr *)&addr, sizeof(addr));
+    int sent = sendto(socket, (CSTR)data.Data, (int)data.Size, 0, (struct sockaddr *)&addr, sizeof(addr));
     if (sent <= 0)
         return 0;
     return (U64)sent;
 }
-FDATA SocketReceiveFrom(SOCKET socket, IPV4 ip_out, FDATA buffer, PPORT port)
+DV SocketReceiveFrom(SOCKET socket, IPV4 ip_out, DV buffer, PPORT port)
 {
     CAssert(SocketIsOpen(socket) and "Socket has to be open to receive anything.");
 
     struct sockaddr_in addr;
     socklen_t addrlen = sizeof(addr);
-    int received = recvfrom(socket, (PCHAR)buffer.data, (int)buffer.size, 0, (struct sockaddr *)&addr, &addrlen);
+    int received = recvfrom(socket, (PCHAR)buffer.Data, (int)buffer.Size, 0, (struct sockaddr *)&addr, &addrlen);
     if (received < 0)
-        return FDATA_INVALID;
+        return DV_INVALID;
 
     if (ip_out)
     {
@@ -147,7 +147,7 @@ FDATA SocketReceiveFrom(SOCKET socket, IPV4 ip_out, FDATA buffer, PPORT port)
     }
     if (port)
         *port = ntohs(addr.sin_port);
-    return fdata(buffer.data, (U64)received);
+    return dv(buffer.Data, (U64)received);
 }
 I64 SocketBlock(SOCKET socket, BOOL blocking)
 {

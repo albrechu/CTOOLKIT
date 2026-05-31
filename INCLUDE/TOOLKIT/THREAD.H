@@ -18,31 +18,31 @@ makeopaque(JOBGRAPHGROUP);
 
 typedef struct MUTEX
 {
+    ALLOCATOR Parent;
     U8        OsHandle[64];
-    ALLOCATOR Allocator;
 } MUTEX;
 
 typedef struct CONDITIONVARIABLE
 {
+    ALLOCATOR Parent;
     U8        OsHandle[64];
-    ALLOCATOR Allocator;
 } CONDITIONVARIABLE;
 
 typedef struct COUNTLATCH
 {
+    ALLOCATOR          Parent;
     PMUTEX             Mutex;
     PCONDITIONVARIABLE ConditionVariable;
     U32                Pending;
-    ALLOCATOR          Allocator;
 } COUNTLATCH;
 
 typedef VOID(*ROUTINE)(PVOID UserData);
 typedef struct THREAD
 {
+    ALLOCATOR Parent;
     U8        OsHandle[16];
     ROUTINE   Routine;
     PVOID     UserData;
-    ALLOCATOR Allocator;
 } THREAD, *PTHREAD, **PPTHREAD;
 
 typedef VOID (*JOBROUTINE)(PVOID UserData, U64 Start, U64 End);
@@ -91,7 +91,7 @@ typedef struct JOBGRAPHGROUP
 
 typedef struct JOBGRAPH
 {
-    ALLOCATOR Allocator;
+    ALLOCATOR Parent;
     PJOBPOOL JobPool;
     PCOUNTLATCH   WaitLatch;
     // Commands
@@ -148,7 +148,7 @@ VOID    ThreadYield(VOID);
 // / / / / / / / / / / / / / / / / / / / 
 // THREAD POOL                         /
 // / / / / / / / / / / / / / / / / / / /
-PJOBPOOL LoadJobPool(ALLOCATOR allocator, U32 threads_count, U32 job_capacity);
+PJOBPOOL LoadJobPool(PALLOCATOR allocator, U32 threads_count, U32 job_capacity);
 VOID     FreeJobPool(PJOBPOOL job_pool);
 VOID     JobPoolWait(PJOBPOOL job_pool);
 BOOL     JobPoolDispatch(PJOBPOOL job_pool, PCOUNTLATCH latch, JOBROUTINE fn, PVOID data);
@@ -156,7 +156,7 @@ U64      JobPoolDispatchN(PJOBPOOL job_pool, PCOUNTLATCH latch, U64 work_count, 
 // / / / / / / / / / / / / / / / / / / / 
 // JOB GRAPH                           /
 // / / / / / / / / / / / / / / / / / / /
-PJOBGRAPH LoadJobGraph(ALLOCATOR allocator, PJOBPOOL job_pool);
+PJOBGRAPH LoadJobGraph(PALLOCATOR allocator, PJOBPOOL job_pool);
 VOID      FreeJobGraph(PJOBGRAPH job_graph);
 VOID      JobGraphClear(PJOBGRAPH job_graph);
 VOID      JobGraphRun(PJOBGRAPH job_graph);

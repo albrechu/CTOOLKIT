@@ -6,12 +6,12 @@
 extern "C" {
 #endif
 
-U64 Hash64(FDATA data, U64 seed);
+U64 Hash64(DV data, U64 seed);
 U32 Crc32(U32 crc, const PVOID buf, U64 len);
 
-FDATA RAnsEncode(ALLOCATOR allocator, FDATA uncompressed, U8 scaling_bits);
-FDATA RAnsDecode(ALLOCATOR allocator, FDATA compressed);
-void  FreeRAns(ALLOCATOR allocator, FDATA data);
+DV RAnsEncode(PALLOCATOR allocator, DV uncompressed, U8 scaling_bits);
+DV RAnsDecode(PALLOCATOR allocator, DV compressed);
+void  FreeRAns(PALLOCATOR allocator, DV data);
 
 #ifdef __cplusplus
 }

@@ -5,8 +5,8 @@ int main()
 {
 	// Get a directory from the user and list some of its contents
 	OPATH dir;
-	FSTR result = OpenDirDialog(dir);
-	if (fstrinvalid(result))
+	SV result = OpenDirDialog(dir);
+	if (svinvalid(result))
 	{
 		infoln("Directory selection cancelled or failed.");
 		return 0;
@@ -18,14 +18,14 @@ int main()
 	PDET entries = FilesystemEntries(fs, &count);
 	for (U64 i = 0; i < count; i++)
 	{
-		succln(entries[i].is_dir ? "[DIR]  %.*s" : "[FILE] %.*s", (int)entries[i].name.size, entries[i].name.str);
+		succln(entries[i].IsDir ? "[DIR]  %.*s" : "[FILE] %.*s", (int)entries[i].Name.Size, entries[i].Name.String);
 	}
 	// Go into the first directory we find
 	for (U64 i = 0; i < count; i++)
 	{
-		if (entries[i].is_dir)
+		if (entries[i].IsDir)
 		{
-			FilesystemGoto(fs, entries[i].name);
+			FilesystemGoto(fs, entries[i].Name);
 			break;
 		}
 	}
@@ -33,7 +33,7 @@ int main()
 	PDET files = FilesystemFiles(fs, &count);
 	for (U64 i = 0; i < count; i++)
 	{
-		succln("\t[FILE] %.*s", (int)files[i].name.size, files[i].name.str);
+		succln("\t[FILE] %.*s", (int)files[i].Name.Size, files[i].Name.String);
 	}
 	// Go back up to the parent directory
 	_ = FilesystemUp(fs);
