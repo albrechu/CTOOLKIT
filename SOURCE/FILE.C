@@ -73,7 +73,7 @@ RESULT FileOpen(SV path, FILEMODE mode, PFILEDATA file)
 	RESULT rc = ErrnoAsResult(err);
 	if (rc == OK)
 	{
-		file->File = (PFILE)stream;
+		file->File = stream;
 		if (mode == FILEMODE_READ or mode == FILEMODE_READTEXT)
 		{
 			fseek(stream, 0, SEEK_END);
@@ -110,7 +110,7 @@ RESULT FileReopen(PFILEDATA file, FILEMODE mode)
 	RESULT rc = ErrnoAsResult(err);
 	if (rc == OK)
 	{
-		file->File = (PFILE)stream;
+		file->File = stream;
 		if (mode == FILEMODE_READ or mode == FILEMODE_READTEXT)
 		{
 			fseek(stream, 0, SEEK_END);

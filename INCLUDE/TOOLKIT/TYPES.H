@@ -11,6 +11,9 @@
 typedef enum bool{ false = 0, true = !false } bool;
 #endif
 
+#ifndef VOID
+typedef void VOID;
+#endif
 typedef int8_t      I8;
 typedef int16_t     I16;
 typedef int32_t     I32;
@@ -21,7 +24,7 @@ typedef uint32_t    U32, *PU32, **PPU32;
 typedef uint64_t    U64, *PU64;
 typedef float       F32;
 typedef double      F64;
-typedef void	    VOID, *PVOID, **PPVOID;
+typedef void	   *PVOID, **PPVOID;
 typedef int         BOOL;
 typedef const char *CSTR;
 typedef char        CHAR, *PCHAR, **PPCHAR;
@@ -29,7 +32,6 @@ typedef CHAR        PATH[512];
 typedef const PATH  CPATH;
 typedef CPATH       IPATH;
 typedef PATH        OPATH, IOPATH;
-typedef struct FILE *PFILE;
 
 typedef struct SV
 {

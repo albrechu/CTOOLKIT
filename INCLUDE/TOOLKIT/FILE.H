@@ -28,7 +28,7 @@ extern "C" {
 	  SV        PathView;
 	  SV        Buffer;
 	  U64       BufferCapacity;
-	  PFILE     File;
+	  PVOID     File;
 	  ALLOCATOR Allocator;
 	  SV        CurrentLine;
 	  union
