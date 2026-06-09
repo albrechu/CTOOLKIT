@@ -10,12 +10,12 @@ int main()
 	PATH cache_path;
 	SV cache_file = PathAbs(svlit("../CMakeCache.txt"), cache_path);
 
-	FILEDATA f;
+	PFILEDATA f;
 	// Read the entire content of the CMakeCache.txt file
-	if (BeginFile(DefaultAllocator(), cache_file, FILEMODE_READ, 0, &f) == OK)
+	if (IS_OK(LoadFile(null, cache_file, FILEMODE_READ, 0, &f)))
 	{
 		SV content;
-		RESULT rc = FileReadAll(&f, true, &content);
+		RESULT rc = FileReadAll(f, true, &content);
 		if (rc == OK)
 		{
 			noteln("File content:\n%.*s", (I32)content.Size, content.String);
@@ -30,50 +30,52 @@ int main()
 		errln("Failed to open file.");
 	}
 	// Write an INI file with various types of values
-	if (FileOpen(svlit("test.ini"), FILEMODE_WRITETEXT, &f) == OK)
+	if (IS_OK(FileOpen(f, svlit("test.ini"), FILEMODE_WRITETEXT)))
 	{
-		IniGroup(&f, svlit("Settings"));
-		IniFloat(&f, svlit("Volume"), 0.75f);
-		IniInteger(&f, svlit("ResolutionWidth"), 1920);
-		IniBool(&f, svlit("Fullscreen"), true);
+		IniGroup(f, svlit("Settings"));
+		IniFloat(f, svlit("Volume"), 0.75f);
+		IniInteger(f, svlit("ResolutionWidth"), 1920);
+		IniBool(f, svlit("Fullscreen"), true);
 
-		IniGroup(&f, svlit("User"));
-		IniString(&f, svlit("Username"), svlit("JohnDoe"));
-		IniInteger(&f, svlit("Age"), 42);
+		IniGroup(f, svlit("User"));
+		IniString(f, svlit("Username"), svlit("JohnDoe"));
+		IniInteger(f, svlit("Age"), 42);
 
-		FileClose(&f);
+		FileClose(f);
 	}
 	// Read back the INI file to verify it was written correctly
 	INIENTRY entry;
-	FileOpen(svlit("test.ini"), FILEMODE_READTEXT, &f);
-	while (IniReadNextEntry(&f, &entry) == OK)
+	if (IS_OK(FileOpen(f, svlit("test.ini"), FILEMODE_READTEXT)))
 	{
-		switch (entry.ValueType)
-		{
-		case VALUETYPE_BOOL:
-			noteln("[%.*s] %.*s = %s", entry.Group.Length, entry.Group.Name, entry.Key.Length, entry.Key.Name, entry.Value.Boolean ? "true" : "false");
-			break;
-		case VALUETYPE_FLOAT:
-			noteln("[%.*s] %.*s = %f", entry.Group.Length, entry.Group.Name, entry.Key.Length, entry.Key.Name, entry.Value.Float);
-			break;
-		case VALUETYPE_INT:
-			noteln("[%.*s] %.*s = %d", entry.Group.Length, entry.Group.Name, entry.Key.Length, entry.Key.Name, entry.Value.Int);
-			break;
-		case VALUETYPE_STRING:
-			noteln("[%.*s] %.*s = %.*s", entry.Group.Length, entry.Group.Name, entry.Key.Length, entry.Key.Name, entry.Value.String.Length, entry.Value.String.Name);
-			break;
-		default:
-			errln("Unknown value type for key [%.*s] %.*s", entry.Group.Length, entry.Group.Name, entry.Key.Length, entry.Key.Name);
-			break;
-		}
+	   while (IniReadNextEntry(f, &entry) == OK)
+	   {
+		   switch (entry.ValueType)
+		   {
+		   case VALUETYPE_BOOL:
+			   noteln("[%.*s] %.*s = %s", entry.Group.Length, entry.Group.Name, entry.Key.Length, entry.Key.Name, entry.Value.Boolean ? "true" : "false");
+			   break;
+		   case VALUETYPE_FLOAT:
+			   noteln("[%.*s] %.*s = %f", entry.Group.Length, entry.Group.Name, entry.Key.Length, entry.Key.Name, entry.Value.Float);
+			   break;
+		   case VALUETYPE_INT:
+			   noteln("[%.*s] %.*s = %d", entry.Group.Length, entry.Group.Name, entry.Key.Length, entry.Key.Name, entry.Value.Int);
+			   break;
+		   case VALUETYPE_STRING:
+			   noteln("[%.*s] %.*s = %.*s", entry.Group.Length, entry.Group.Name, entry.Key.Length, entry.Key.Name, entry.Value.String.Length, entry.Value.String.Name);
+			   break;
+		   default:
+			   errln("Unknown value type for key [%.*s] %.*s", entry.Group.Length, entry.Group.Name, entry.Key.Length, entry.Key.Name);
+			   break;
+		   }
+	   }
+	   FileClose(f);
 	}
-	FileClose(&f);
 
 	// Read back the JSON file to verify it was written correctly
-	if (FileOpen(svlit("test2.json"), FILEMODE_READTEXT, &f) == OK)
+	if (FileOpen(f, svlit("test2.json"), FILEMODE_READTEXT) == OK)
 	{
 		JSONENTRY json_entry;
-		while (JsonReadNextEntry(&f, &json_entry) == OK)
+		while (JsonReadNextEntry(f, &json_entry) == OK)
 		{
 			switch (json_entry.ValueType)
 			{
@@ -104,45 +106,42 @@ int main()
 				break;
 			}
 		}
-		FileClose(&f);
+		FileClose(f);
 	}
 
 	// Write a JSON file 
-	if (FileOpen(svlit("test2.json"), FILEMODE_WRITETEXT, &f) == OK)
+	if (FileOpen(f, svlit("test2.json"), FILEMODE_WRITETEXT) == OK)
 	{
-		JsonBegin(&f);
+		JsonBegin(f);
 		{
-			JsonObjectBegin(&f, svlit("player"));
+			JsonObjectBegin(f, svlit("player"));
 			{
-				JsonString(&f, svlit("name"), svlit("Alice"));
-				JsonInteger(&f, svlit("score"), 12345);
-				JsonFloat(&f, svlit("health"), 0.85f);
-				JsonArrayBegin(&f, svlit("position"));
+				JsonString(f, svlit("name"), svlit("Alice"));
+				JsonInteger(f, svlit("score"), 12345);
+				JsonFloat(f, svlit("health"), 0.85f);
+				JsonArrayBegin(f, svlit("position"));
 				for (I32 i = 0; i < 3; i++)
 				{
-					JsonFloat(&f, SV_INVALID, (F32)(i * 1.5f));
+					JsonFloat(f, SV_INVALID, (F32)(i * 1.5f));
 				}
-				JsonArrayEnd(&f);
+				JsonArrayEnd(f);
 
-				JsonArrayBegin(&f, svlit("inventory"));
+				JsonArrayBegin(f, svlit("inventory"));
 				{
-					JsonString(&f, SV_INVALID, svlit("Sword"));
-					JsonString(&f, SV_INVALID, svlit("Hammer"));
+					JsonString(f, SV_INVALID, svlit("Sword"));
+					JsonString(f, SV_INVALID, svlit("Hammer"));
 				}
-				JsonArrayEnd(&f);
+				JsonArrayEnd(f);
 
-				JsonObjectBegin(&f, svlit("skills"));
-				JsonObjectEnd(&f);
-				JsonFloat(&f, svlit("movement speed"), 4.512331);
+				JsonObjectBegin(f, svlit("skills"));
+				JsonObjectEnd(f);
+				JsonFloat(f, svlit("movement speed"), 4.512331);
 			}
-			JsonObjectEnd(&f);
+			JsonObjectEnd(f);
 		}
-		JsonEnd(&f);
+		JsonEnd(f);
 	}
-
-	
-
-	EndFile(&f);
+	FreeFile(f);
 
 	return 0;
 }

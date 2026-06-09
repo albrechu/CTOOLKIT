@@ -93,8 +93,8 @@ dfs(16);
 ```
 ### DEFAULT (MALLOC/FREE)
 ```c
-PALLOCATOR default_allocator = DefaultAllocator();
-PVOID mem = Alloc(default_allocator, 256 * sizeof(U32), alignof(U32)); // allocate 256 bytes.
+PALLOCATOR allocator = DefaultAllocator();
+PVOID mem = Alloc(allocator, 256 * sizeof(U32), alignof(U32)); // allocate 256 bytes.
 Free(allocator, mem); 
 ```
 ### ARENA
@@ -181,7 +181,6 @@ for (U64 i = 0; i < (U64)1e9; i++)
 ### PROCESS
 #### RUN PROCESS
 ```c
-ALLOCATOR allocator = DefaultAllocator();
 SV args[] = 
 { 
 	svlit("powershell.exe"),
@@ -191,7 +190,7 @@ SV args[] =
 	svlit("-Command"),
 	svlit("Get-Date")
 };
-_ = Run(&allocator, arrsize(args), args);
+_ = Run(null, arrsize(args), args);
 ```
 #### WITH PIPES
 ```c
@@ -220,8 +219,7 @@ if (process)
 #include <TOOLKIT/CLI.H>
 
 dfs(16);
-ALLOCATOR allocator = DefaultAllocator();
-. 
+
 PMUTEX mtx = LoadMutex(null);
 df(FreeMutex, mtx);
 PCONDITIONVARIABLE cv = LoadConditionVariable(null);
@@ -233,7 +231,7 @@ StorePtr(&b, null);
 ```
 ### JOB POOL
 ```c
-PJOBPOOL pool = LoadJobPool(allocator, 2, 256);
+PJOBPOOL pool = LoadJobPool(null, 2, 256);
 df(FreeJobPool, pool);
 JobPoolDispatchN(pool, null, 64, 8, [](PVOID data, U64 start, U64 end) { 
 	while (start != end)
@@ -244,7 +242,7 @@ JobPoolDispatchN(pool, null, 64, 8, [](PVOID data, U64 start, U64 end) {
 ```
 ### JOB GRAPH (DAG)
 ```c
-PJOBGRAPH graph = LoadJobGraph(allocator, pool);
+PJOBGRAPH graph = LoadJobGraph(null, pool);
 df(FreeJobGraph, graph);
 
 JobGraphPut(graph);
@@ -285,43 +283,45 @@ PathSetWorkingDirToExecutable();
 
 /// File Reading
 FILEDATA f;
-if (BeginFile(DefaultAllocator(), svlit("../CMakeCache.txt"), FILEMODE_READ, 0, &f) == OK)
+if (LoadFile(null, svlit("../CMakeCache.txt"), FILEMODE_READ, 0, &f) == OK)
 {
 	SV content;
-	RESULT rc = FileReadAll(&f, true, &content);
+	RESULT rc = FileReadAll(f, true, &content);
 	if (rc != OK)
 	{
 		errln("Failed to read file.");
 		return -1;
 	}
 	noteln("File content:\n%.*s", (int)content.size, content.Str);
-	EndFile(&f);
+	FreeFile(f);
 }
 ```
 ### INI
 #### INI WRITING
 ```c
-if (BeginFile(DefaultAllocator(), svlit("config.ini"), FILEMODE_WRITETEXT, 0, &f) == OK)
+PFILEDATA f;
+if (LoadFile(null, svlit("config.ini"), FILEMODE_WRITETEXT, 0, &f) == OK)
 {
 	// [Settings]
-	IniGroup(&f, svlit("Settings"));
-	IniFloat(&f, svlit("Volume"), 0.75f);
-	IniInteger(&f, svlit("ResolutionWidth"), 1920);
-	IniBool(&f, svlit("Fullscreen"), true);
+	IniGroup(f, svlit("Settings"));
+	IniFloat(f, svlit("Volume"), 0.75f);
+	IniInteger(f, svlit("ResolutionWidth"), 1920);
+	IniBool(f, svlit("Fullscreen"), true);
 	// [User]
-	IniGroup(&f, svlit("User"));
-	IniString(&f, svlit("Username"), svlit("JohnDoe"));
-	IniInteger(&f, svlit("Age"), 42);
+	IniGroup(f, svlit("User"));
+	IniString(f, svlit("Username"), svlit("JohnDoe"));
+	IniInteger(f, svlit("Age"), 42);
 
-	EndFile(&f);
+	FreeFile(f);
 }
 ```
 #### INI READING
 ```c
-if (BeginFile(DefaultAllocator(), svlit("config.ini"), FILEMODE_READTEXT, 0, &f) == OK)
+PFILEDATA f;
+if (LoadFile(null, svlit("config.ini"), FILEMODE_READTEXT, 0, &f) == OK)
 {
 	INIENTRY entry;
-	while (IniReadNextEntry(&f, &entry) == OK)
+	while (IniReadNextEntry(f, &entry) == OK)
 	{
 		switch (entry.ValueType)
 		{
@@ -342,51 +342,51 @@ if (BeginFile(DefaultAllocator(), svlit("config.ini"), FILEMODE_READTEXT, 0, &f)
 			break;
 		}
 	}
-	EndFile(&f);
+	FreeFile(f);
 }
 ```
 ### JSON
 #### JSON WRITING
 ```c
-if (BeginFile(DefaultAllocator(), svlit("test.json"), FILEMODE_WRITETEXT, 0, &f) == OK)
+PFILEDATA f;
+if (LoadFile(null, svlit("test.json"), FILEMODE_WRITETEXT, 0, &f) == OK)
 {
 	JsonBegin(&f);
 	{
-		JsonObjectBegin(&f, svlit("player"));
+		JsonObjectBegin(f, svlit("player"));
 		{
-			JsonString(&f, svlit("name"), svlit("Alice"));
-			JsonInteger(&f, svlit("score"), 12345);
-			JsonFloat(&f, svlit("health"), 0.85f);
-			JsonArrayBegin(&f, svlit("position"));
+			JsonString(f, svlit("name"), svlit("Alice"));
+			JsonInteger(f, svlit("score"), 12345);
+			JsonFloat(f, svlit("health"), 0.85f);
+			JsonArrayBegin(f, svlit("position"));
 			for (I32 i = 0; i < 3; i++)
-			{
-				JsonFloat(&f, SV_INVALID, (F32)(i * 1.5f));
-			}
-			JsonArrayEnd(&f);
+				JsonFloat(f, SV_INVALID, (F32)(i * 1.5f));
+			JsonArrayEnd(f);
 
-			JsonArrayBegin(&f, svlit("inventory"));
+			JsonArrayBegin(f, svlit("inventory"));
 			{
-				JsonString(&f, SV_INVALID, svlit("Sword"));
-				JsonString(&f, SV_INVALID, svlit("Hammer"));
+				JsonString(f, SV_INVALID, svlit("Sword"));
+				JsonString(f, SV_INVALID, svlit("Hammer"));
 			}
-			JsonArrayEnd(&f);
+			JsonArrayEnd(f);
 
-			JsonObjectBegin(&f, svlit("skills"));
-			JsonObjectEnd(&f);
-			JsonFloat(&f, svlit("movement speed"), 4.512331);
+			JsonObjectBegin(f, svlit("skills"));
+			JsonObjectEnd(f);
+			JsonFloat(f, svlit("movement speed"), 4.512331);
 		}
-		JsonObjectEnd(&f);
+		JsonObjectEnd(f);
 	}
-	JsonEnd(&f);
-	EndFile(&f);
+	JsonEnd(f);
+	FreeFile(f);
 }
 ```
 #### JSON READING
 ```c
-if (BeginFile(DefaultAllocator(), svlit("test.json"), FILEMODE_READTEXT, 0, &f) == OK)
+PFILEDATA f;
+if (IS_OK(LoadFile(DefaultAllocator(), svlit("test.json"), FILEMODE_READTEXT, 0, &f)))
 {
 	JSONENTRY entry;
-	while (JsonReadNextEntry(&f, &entry) == OK)
+	while (IS_OK(JsonReadNextEntry(f, &entry)))
 	{
 		switch (entry.ValueType)
 		{
@@ -417,7 +417,7 @@ if (BeginFile(DefaultAllocator(), svlit("test.json"), FILEMODE_READTEXT, 0, &f) 
 			break;
 		}
 	}
-	EndFile(&f);
+	FreeFile(f);
 }
 ```
 ### MESSAGEPACK

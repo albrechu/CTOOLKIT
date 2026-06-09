@@ -120,8 +120,9 @@ extern "C" {
    // / / / / / / / / / / / / / / / / / / / 
    // GENERAL FILE I/O                    /
    // / / / / / / / / / / / / / / / / / / /
-   RESULT BeginFile(PALLOCATOR allocator, SV path, FILEMODE mode, U64 initial_capacity, PFILEDATA file);
-   RESULT FileOpen(SV path, FILEMODE mode, PFILEDATA file);
+   RESULT LoadFile(PALLOCATOR allocator, SV path, FILEMODE mode, U64 initial_capacity, PPFILEDATA file);
+   VOID   FreeFile(PFILEDATA file);
+   RESULT FileOpen(PFILEDATA file, SV path, FILEMODE mode);
    RESULT FileReopen(PFILEDATA file, FILEMODE mode);
    RESULT FileWriteAll(PFILEDATA file, BOOL as_text, SV content);
    RESULT FileRead(PFILEDATA file, U64 count, PSV content);
@@ -131,7 +132,6 @@ extern "C" {
    RESULT FileWrite(PFILEDATA file, SV content, BOOL as_text);
    VOID   FileRewind(PFILEDATA file);
    RESULT FileClose(PFILEDATA file);
-   VOID   EndFile(PFILEDATA file);
    // / / / / / / / / / / / / / / / / / / / 
    // INI FILE                            /
    // / / / / / / / / / / / / / / / / / / /
