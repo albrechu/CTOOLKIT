@@ -176,6 +176,15 @@ U32  IncU32(volatile U32 *a);
 U32  DecU32(volatile U32 *a);
 U32  ExchangeU32(volatile U32 *a, U32 v);
 BOOL CASU32(volatile U32 *a, U32 *expected, U32 desired);
+// U64
+U64  LoadU64(volatile U64 *a);
+VOID StoreU64(volatile U64 *a, U64 v);
+U64  AddU64(volatile U64 *a, U64 v);
+U64  SubU64(volatile U64 *a, U64 v);
+U64  IncU64(volatile U64 *a);
+U64  DecU64(volatile U64 *a);
+U64  ExchangeU64(volatile U64 *a, U64 v);
+BOOL CASU64(volatile U64 *a, U64 *expected, U64 desired);
 // PVOID
 PVOID LoadPtr(PVOID volatile *a);
 VOID  StorePtr(PVOID volatile *a, PVOID v);

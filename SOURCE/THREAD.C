@@ -724,6 +724,75 @@ BOOL CASU32(volatile U32 *a, U32 *expected, U32 desired)
 #endif
 }
 
+U64 LoadU64(volatile U64 *a)
+{
+#if defined(_MSC_VER)
+   return (U64)InterlockedCompareExchange64((volatile __int64 *)a, 0, 0);
+#else
+   return __atomic_load_n(a, __ATOMIC_SEQ_CST);
+#endif
+}
+VOID StoreU64(volatile U64 *a, U64 v)
+{
+#if defined(_MSC_VER)
+   InterlockedExchange64((volatile __int64 *)a, (__int64)v);
+#else
+   __atomic_store_n(a, v, __ATOMIC_SEQ_CST);
+#endif
+}
+U64 AddU64(volatile U64 *a, U64 v)
+{
+#if defined(_MSC_VER)
+   return (U64)InterlockedExchangeAdd64((volatile __int64 *)a, (__int64)v);
+#else
+   return __atomic_fetch_add(a, v, __ATOMIC_SEQ_CST);
+#endif
+}
+U64 SubU64(volatile U64 *a, U64 v)
+{
+#if defined(_MSC_VER)
+   return (U64)InterlockedExchangeAdd64((volatile __int64 *)a, -((__int64)v));
+#else
+   return __atomic_fetch_sub(a, v, __ATOMIC_SEQ_CST);
+#endif
+}
+U64 IncU64(volatile U64 *a)
+{
+#if defined(_MSC_VER)
+   return (U64)InterlockedIncrement64((volatile __int64 *)a);
+#else
+   return __atomic_add_fetch(a, 1, __ATOMIC_SEQ_CST);
+#endif
+}
+U64 DecU64(volatile U64 *a)
+{
+#if defined(_MSC_VER)
+   return (U64)InterlockedDecrement64((volatile __int64 *)a);
+#else
+   return __atomic_sub_fetch(a, 1, __ATOMIC_SEQ_CST);
+#endif
+}
+U64 ExchangeU64(volatile U64 *a, U64 v)
+{
+#if defined(_MSC_VER)
+   return (U64)InterlockedExchange64((volatile __int64 *)a, (__int64)v);
+#else
+   return __atomic_exchange_n(a, v, __ATOMIC_SEQ_CST);
+#endif
+}
+BOOL CASU64(volatile U64 *a, U64 *expected, U64 desired)
+{
+#if defined(_MSC_VER)
+   U64 old = (U64)InterlockedCompareExchange64((volatile __int64 *)a, (__int64)desired, (__int64)*expected);
+   if (old == *expected)
+	  return TRUE;
+   *expected = old;
+   return FALSE;
+#else
+   return __atomic_compare_exchange_n(a, expected, desired, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+#endif
+}
+
 PVOID LoadPtr(PVOID volatile *a)
 {
 #if defined(_MSC_VER)
