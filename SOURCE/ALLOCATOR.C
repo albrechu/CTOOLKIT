@@ -731,30 +731,31 @@ BOOL PooSameAlignedObjSize(const PPOOL P, U64 ObjSize)
    return P->ObjSize == Aligned(ObjSize, POOL_ALIGN);
 }
 
-void PoolBegin(PPOOL P, PPOOLITER It)
+void PoolBegin(PPOOL p, PPOOLITER it)
 {
-   CAssert(P and It and "Pool and iterator need to be valid");
-   It->Pool = P;
-   It->List = 0;
-   It->Slot = 0;
-   POOL_MUTEX_LOCK(P->Lock);
-   It->Block = P->Partial ? P->Partial : P->Full;
-   if (!It->Block)
-	  It->List = 2;
+   CAssert(p and it and "Pool and iterator need to be valid");
+   memzero(it);
+   it->Pool = p;
+   it->List = 0;
+   it->Slot = 0;
+   POOL_MUTEX_LOCK(p->Lock);
+   it->Block = p->Partial ? p->Partial : p->Full;
+   if (!it->Block)
+	  it->List = 2;
 }
 
-PVOID PoolNext(POOLITER *It)
+PVOID PoolNext(POOLITER *it)
 {
-   PPOOL P = It->Pool;
+   PPOOL P = it->Pool;
    CAssert(P and "Pool in iterator needs to be valid.");
 
-   while (It->Block)
+   while (it->Block)
    {
-	  PPOOLBLOCK B = (PPOOLBLOCK)It->Block;
+	  PPOOLBLOCK B = (PPOOLBLOCK)it->Block;
 
-	  while (It->Slot < B->Capacity)
+	  while (it->Slot < B->Capacity)
 	  {
-		 U64 I = It->Slot++;
+		 U64 I = it->Slot++;
 		 if (PoolSlotIsFree(B, P->ObjSize, I))
 			continue;
 
@@ -763,19 +764,19 @@ PVOID PoolNext(POOLITER *It)
 		 return PoolToUser(Base + Stride * I);
 	  }
 
-	  It->Slot = 0;
+	  it->Slot = 0;
 	  if (B->Next)
 	  {
-		 It->Block = B->Next;
+		 it->Block = B->Next;
 	  }
-	  else if (It->List == 0)
+	  else if (it->List == 0)
 	  {
-		 It->List = 1;
-		 It->Block = P->Full;
+		 it->List = 1;
+		 it->Block = P->Full;
 	  }
 	  else
 	  {
-		 It->Block = null;
+		 it->Block = null;
 	  }
    }
    return null;
@@ -789,6 +790,7 @@ void PoolEnd(POOLITER *it)
 void PoolBeginRev(PPOOL p, PPOOLITER it)
 {
    CAssert(p and it and "Pool and iterator need to be valid");
+   memzero(it);
    it->Pool = p;
    it->List = 0;
    POOL_MUTEX_LOCK(p->Lock);

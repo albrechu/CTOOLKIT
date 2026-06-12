@@ -133,13 +133,13 @@ BOOL  PooSameAlignedObjSize(const PPOOL P, U64 ObjSize); // To catch wrong size 
 // / / / / / / / / / / / / / / / / / / / 
 VOID  PoolFlushThreadCache(PPOOL P);
 //// FORWARD ITERATION /////////////////
-VOID  PoolBegin(PPOOL P, PPOOLITER It);
-PVOID PoolNext(PPOOLITER It);
-VOID  PoolEnd(PPOOLITER It);
+VOID  PoolBegin(PPOOL p, PPOOLITER it);
+PVOID PoolNext(PPOOLITER it);
+VOID  PoolEnd(PPOOLITER it);
 //// REVERSE ITERATION /////////////////
-VOID  PoolBeginRev(PPOOL P, PPOOLITER It);
-PVOID PoolNextRev(PPOOLITER It);
-VOID  PoolEndRev(PPOOLITER It);
+VOID  PoolBeginRev(PPOOL p, PPOOLITER it);
+PVOID PoolNextRev(PPOOLITER it);
+VOID  PoolEndRev(PPOOLITER it);
 
 // / / / / / / / / / / / / / / / / / / / 
 // TLSF                                /
