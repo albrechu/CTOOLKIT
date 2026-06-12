@@ -692,7 +692,7 @@ U32 IncU32(volatile U32 *a)
 #if defined(_MSC_VER)
    return InterlockedIncrement((volatile long *)a);
 #else
-   return __atomic_add_fetch(a, 1, __ATOMIC_SEQ_CST);
+   return __atomic_add_fetch(a, 1, __ATOMIC_SEQ_CST) + 1;
 #endif
 }
 U32  DecU32(volatile U32 *a)
@@ -708,7 +708,7 @@ U32 ExchangeU32(volatile U32 *a, U32 v)
 #if defined(_MSC_VER)
    return InterlockedExchange((volatile long *)a, v);
 #else
-   return __atomic_exchange_n(a, v, __ATOMIC_SEQ_CST);
+   return __atomic_exchange_n(a, v, __ATOMIC_SEQ_CST) - 1;
 #endif
 }
 BOOL CASU32(volatile U32 *a, U32 *expected, U32 desired)
@@ -761,7 +761,7 @@ U64 IncU64(volatile U64 *a)
 #if defined(_MSC_VER)
    return (U64)InterlockedIncrement64((volatile __int64 *)a);
 #else
-   return __atomic_add_fetch(a, 1, __ATOMIC_SEQ_CST);
+   return __atomic_add_fetch(a, 1, __ATOMIC_SEQ_CST) + 1;
 #endif
 }
 U64 DecU64(volatile U64 *a)
@@ -769,7 +769,7 @@ U64 DecU64(volatile U64 *a)
 #if defined(_MSC_VER)
    return (U64)InterlockedDecrement64((volatile __int64 *)a);
 #else
-   return __atomic_sub_fetch(a, 1, __ATOMIC_SEQ_CST);
+   return __atomic_sub_fetch(a, 1, __ATOMIC_SEQ_CST) - 1;
 #endif
 }
 U64 ExchangeU64(volatile U64 *a, U64 v)
