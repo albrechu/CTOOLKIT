@@ -111,7 +111,11 @@ extern "C" {
         #if defined(__GNUC__) || defined(__clang__)
             #define typeof(expr) __typeof__(expr)
         #elif defined(_MSC_VER)
-            #define typeof(expr) __typeof(expr)
+            #if _MSVC_LANG >= 201103L
+               #define typeof(expr) decltype(expr)    
+            #else
+               #define typeof(expr) __typeof(expr)
+            #endif
         #endif
     #endif
 #else // C
@@ -147,7 +151,7 @@ extern "C" {
 #endif 
 
 #define memzero(p) memset(p, 0, sizeof(*p))
-#define alignup(x, type) ((((uintptr_t)x) + (alignof(x) - 1)) & ~(alignof(x) - 1))
+#define alignup(x, type) ((((uintptr_t)x) + (alignof(type) - 1)) & ~(alignof(type) - 1))
 #define aligndown(x, type) (((uintptr_t)x) & ~(alignof(x) - 1))
 #define makeopaque(TYPE) typedef struct TYPE TYPE, *P##TYPE, **PP##TYPE
 #define arrsize(x) (sizeof(x) / sizeof((x)[0]))
@@ -157,8 +161,6 @@ extern "C" {
 #define TOSTRING(x) stringify(x)
 #define LINE_STRING TOSTRING(__LINE__)
 #define EXPAND(x) x
-
-#define ALIGNUP(size, alignment) (((size) + (alignment) - 1) & ~((alignment) - 1))
 
 ////////////////////////////////////////
 // PACKED BUNDLE                      //

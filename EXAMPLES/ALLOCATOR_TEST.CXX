@@ -13,6 +13,15 @@ int main()
    for (U64 i = 0; i < 64; i++)
 	  _ = ArenaPut(arena, 64 * sizeof(F64), alignof(F64));
 
+   U64 size = 0;                    
+   I32 *a = packadd(size, I32, 10); 
+   I8  *b = packadd(size, I8,  1); // 7 Bytes of padding is added here.
+   F64 *c = packadd(size, F64, 5);
+   PVOID bundle = Alloc(ArenaAllocator(arena), size, alignof(I32));
+   packfix(bundle, a);              
+   packfix(bundle, b);
+   packfix(bundle, c);
+
    PPOOL pool = LoadPool(ArenaAllocator(arena), sizeof(I32), 256);
    df(FreePool, pool);
    for (U64 i = 0; i < 32324; i++)
