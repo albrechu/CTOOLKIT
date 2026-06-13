@@ -39,16 +39,47 @@ BOOL SVEqualNoCase(SV s1, SV s2)
    }
    return true;
 }
+BOOL SVStartsWith(SV haystack, SV needle)
+{
+   if (svinvalid(haystack) or svinvalid(needle) or haystack.Size < needle.Size) return false;
+   BOOL starts_with = true;
+   for (U64 i = 0; i < needle.Size; i++)
+	  starts_with &= needle.String[i] == haystack.String[i];
+   return starts_with;
+}
+SV SVSlice(SV s, U64 start, U64 length)
+{
+   SV r = { 0 }; 
+   if (svinvalid(s) or start >= s.Size) return r;
+   if (start + length > s.Size or length == 0)
+   {
+	  length = s.Size - start;
+   }
+   r.String = s.String + start;
+   r.Size = length;
+   return r;
+}
+SV SVSliceSub(SV s, U64 start, U64 end)
+{
+   SV r = { 0 };
+   if (svinvalid(s) or start >= s.Size or start >= end) return r;
+   if (end > s.Size)
+   {
+	  end = s.Size;
+   }
+   r.String = s.String + start;
+   r.Size = end - start;
+   return r;
+}
 I32 SVCompare(SV s1, SV s2)
 {
    if (svinvalid(s1) or svinvalid(s2))
 	  return (s1.String == s2.String) ? 0 : (s1.String ? 1 : -1);
-   // Compare up to the smaller length
+
    U64 min_size = (s1.Size < s2.Size) ? s1.Size : s2.Size;
    I32 res = memcmp(s1.String, s2.String, min_size);
    if (res != 0)
 	  return res;
-   // Final size check
    if (s1.Size < s2.Size)      return -1;
    else if (s1.Size > s2.Size) return 1;
    else                          return 0;

@@ -9,6 +9,9 @@ extern "C" {
 VOID SVFree(PALLOCATOR allocator, SV string);
 BOOL SVEqual(SV s1, SV s2);
 BOOL SVEqualNoCase(SV s1, SV s2);
+BOOL SVStartsWith(SV haystack, SV needle);
+SV   SVSlice(SV s, U64 start, U64 length);
+SV   SVSliceSub(SV s, U64 start, U64 end);
 I32  SVCompare(SV s1, SV s2);
 I64  SVChr(SV s, CHAR c);
 SV   SVFind(SV haystack, SV needle);
@@ -20,25 +23,28 @@ SV   SVJoin(PALLOCATOR allocator, U32 strings_count, PSV strings);
 
 #define HASH64_BASIS 14695981039346656037ULL
 #define HASH64_PRIME 1099511628211ULL
-static inline U64 HashFNV1a(DV data)
+static inline U64 HashFNV1a(DV data, U64 seed)
 {
-    U64 hash = HASH64_BASIS;
-    const U8 *p = (const U8 *)data.Data;
-    const U8 *end = p + data.Size;
-    for (; p + 4 <= end; p += 4)
-    {
-        hash = (hash ^ p[0]) * HASH64_PRIME;
-        hash = (hash ^ p[1]) * HASH64_PRIME;
-        hash = (hash ^ p[2]) * HASH64_PRIME;
-        hash = (hash ^ p[3]) * HASH64_PRIME;
-    }
-    while (p < end) // Remaining bytes
-        hash = (hash ^ *p++) * HASH64_PRIME;
-    return hash;
+   // Setting hash to the seed gives you maximum flexibility
+   U64 hash = seed;
+   const U8 *p = (const U8 *)data.Data;
+   const U8 *end = p + data.Size;
+
+   for (; p + 4 <= end; p += 4)
+   {
+      hash = (hash ^ p[0]) * HASH64_PRIME;
+      hash = (hash ^ p[1]) * HASH64_PRIME;
+      hash = (hash ^ p[2]) * HASH64_PRIME;
+      hash = (hash ^ p[3]) * HASH64_PRIME;
+   }
+   while (p < end)
+      hash = (hash ^ *p++) * HASH64_PRIME;
+
+   return hash;
 }
 static inline U64 SVHash(SV str)
 {
-    return HashFNV1a(dv(str.String, str.Size));
+    return HashFNV1a(dv(str.String, str.Size), HASH64_BASIS);
 }
 #define svhash(x) SVHash(x)
 
