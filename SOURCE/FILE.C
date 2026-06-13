@@ -679,7 +679,7 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 	  {
 		 // Read Key
 		 entry->Key.Length = JsonParseString(filedata->CurrentLine, offset, entry->Key.Name, sizeof(entry->Key.Name));
-		 entry->Key.Hash = HashFNV1a(dv(entry->Key.Name, entry->Key.Length));
+		 entry->Key.Hash = HashFNV1a(dv(entry->Key.Name, entry->Key.Length), HASH64_BASIS);
 
 		 // ':' after key
 		 token = JsonSkipWhitespace(filedata->CurrentLine, offset);
@@ -731,7 +731,7 @@ RESULT JsonReadNextEntry(PFILEDATA filedata, PJSONENTRY entry)
 	  {
 		 entry->ValueType = VALUETYPE_STRING;
 		 entry->Value.String.Length = JsonParseString(filedata->CurrentLine, offset, entry->Value.String.Name, sizeof(entry->Value.String.Name));
-		 entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, entry->Value.String.Length));
+		 entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, entry->Value.String.Length), HASH64_BASIS);
 		 return OK;
 	  }
 	  else if (token == '{' or token == '[')
@@ -876,7 +876,7 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
 
 	  entry->Value.String.Name[len] = '\0';
 	  entry->Value.String.Length = len;
-	  entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len));
+	  entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len), HASH64_BASIS);
 	  entry->ValueType = VALUETYPE_STRING;
 
 	  while (*offset < filedata->CurrentLine.Size and filedata->CurrentLine.String[*offset] != ',') // Skip to next comma or EOL
@@ -974,7 +974,7 @@ RESULT CsvReadNextValue(PFILEDATA filedata, PCSVENTRY entry)
    {
 	  memcpy(entry->Value.String.Name, value_buf, len + 1);
 	  entry->Value.String.Length = len;
-	  entry->Value.String.Hash = HashFNV1a(dv(value_buf, len));
+	  entry->Value.String.Hash = HashFNV1a(dv(value_buf, len), HASH64_BASIS);
 	  entry->ValueType = VALUETYPE_STRING;
    }
    else
@@ -1218,7 +1218,7 @@ RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 			memcpy(entry->Value.String.Name, &filedata->Buffer.String[filedata->Offset], len);
 			entry->Value.String.Name[len] = '\0';
 			entry->Value.String.Length = len;
-			entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len));
+			entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len), HASH64_BASIS);
 			filedata->Offset += len;
 			entry->ValueType = VALUETYPE_STRING;
 			return OK;
@@ -1285,7 +1285,7 @@ RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 		 memcpy(entry->Value.String.Name, &filedata->Buffer.String[filedata->Offset], len);
 		 entry->Value.String.Name[len] = '\0';
 		 entry->Value.String.Length = len;
-		 entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len));
+		 entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len), HASH64_BASIS);
 		 filedata->Offset += len;
 		 entry->ValueType = VALUETYPE_STRING;
 		 return OK;
@@ -1300,7 +1300,7 @@ RESULT MsgPackReadNextEntry(PFILEDATA filedata, PMSGPACKENTRY entry)
 		 memcpy(entry->Value.String.Name, &filedata->Buffer.String[filedata->Offset], len);
 		 entry->Value.String.Name[len] = '\0';
 		 entry->Value.String.Length = len;
-		 entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len));
+		 entry->Value.String.Hash = HashFNV1a(dv(entry->Value.String.Name, len), HASH64_BASIS);
 		 filedata->Offset += len;
 		 entry->ValueType = VALUETYPE_STRING;
 		 return OK;
