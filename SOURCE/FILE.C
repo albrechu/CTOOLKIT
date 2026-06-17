@@ -111,8 +111,8 @@ RESULT FileReopen(PFILEDATA file, FILEMODE mode)
    {
    case FILEMODE_READ:      file_mode = "rb"; break;
    case FILEMODE_READTEXT:  file_mode = "r";  break;
-   case FILEMODE_WRITE:     file_mode = "w";  break;
-   case FILEMODE_WRITETEXT: file_mode = "wb"; break;
+   case FILEMODE_WRITE:     file_mode = "wb";  break;
+   case FILEMODE_WRITETEXT: file_mode = "w"; break;
    default: break;
    }
 
